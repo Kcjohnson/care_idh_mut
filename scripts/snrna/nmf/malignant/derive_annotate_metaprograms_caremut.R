@@ -1,0 +1,157 @@
+##################################
+# Derive and annotate malignant MPs for CAREmut dataset
+# Author: Kevin Johnson
+# Date: 2026.04.01
+##################################
+
+proj_dir    <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut"
+fig_dir     <- file.path(proj_dir, "figures")
+out_data_dir <- file.path(proj_dir, "processed_data")
+script_dir  <- file.path(proj_dir, "scripts")
+
+setwd(proj_dir)
+
+# Load the NMF helper functions (implementation of the MP algorithm) 
+source(file.path(script_dir, "utils", "PvsR-NMF-caremut.R"))
+source(file.path(script_dir, "utils", "plot_theme.R"))
+
+####################################################################################################################################
+####################################################################################################################################
+####################################################################################################################################
+# Derive NMF MPs
+#
+# In this part we load the NMF results that were computed on HPC. We expect an NMF file for each sample/cell type and
+# generate the MPs for each cell type independently
+#
+####################################################################################################################################
+####################################################################################################################################
+####################################################################################################################################
+
+
+# Path to NMF results directory.
+# nmf_res_dir <- file.path(proj_dir, "results/nmf_res_caremut/malignant_n74/")
+nmf_res_dir <- file.path(proj_dir, "results/nmf_res_caremut/malignant_n74_downsampled/")
+
+# List files in the directory. Note that there was one sample with insufficient malignant cells. Therefore, n = 74 samples.
+nmf_files <- list.files(nmf_res_dir)
+
+# Generate the NMF scores matrix across all samples and candidate programs
+Genes_nmf_w_basis <- lapply(nmf_files, function(x) {
+  
+  message("Processing: ", x)
+  
+  f <- readRDS(file = paste0(nmf_res_dir, x))
+  
+  res <- get_nmf_programs(f$fit, x)
+  
+  rm(f)
+  gc()
+  
+  return(res)
+})
+names(Genes_nmf_w_basis) <- nmf_files
+length(Genes_nmf_w_basis)
+
+# Call the NMF algorithm
+malignant_nmf_metaprograms <- derive_NMF_metaprograms(Genes_nmf_w_basis = Genes_nmf_w_basis, 
+                                                      save_path = "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/metaprograms/malignant_downsampled/", 
+                                                      population = "all_mutants",
+                                                      verbose = T, 
+                                                      n_genes = 50)
+
+
+# saveRDS(malignant_nmf_metaprograms, file= "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/metaprograms/malignant_downsampled/malignant_nmf_metaprograms_out.RDS")
+# malignant_nmf_metaprograms <- readRDS("/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/metaprograms/malignant_downsampled/malignant_nmf_metaprograms_out.RDS")
+# The malignant_nmf_metaprograms object is a list containing the clusters (i.e. the NMF programs from which each MP was derived)
+# and the MPs in tabular and list form
+
+
+# Visualize metaprograms:
+library(tidyverse)
+meta_care <- read.table("/vast/palmer/pi/verhaak/kcj28/care_idh_mut/data/misc/caremut_sample_identifier_linker.txt", sep = "\t", row.names = 1, header = TRUE)
+mp_res_df <- data.frame(
+  Cluster = rep(names(malignant_nmf_metaprograms$clusters), sapply(malignant_nmf_metaprograms$clusters, length)),
+  Sample = unlist(malignant_nmf_metaprograms$clusters)
+)
+mp_res_df$SampleID <- sapply(strsplit(mp_res_df$Sample, "_"), "[[", 1)
+mp_res_df_annot <- mp_res_df %>% 
+  inner_join(meta_care, "SampleID")
+
+# What's the distribution of clusters across subtype and time point 
+table(mp_res_df_annot$Cluster, mp_res_df_annot$idh_codel_subtype)
+table(mp_res_df_annot$Cluster, mp_res_df_annot$lab)
+table(mp_res_df_annot$Cluster, mp_res_df_annot$timepoint)
+
+mp_res_df_annot_distinct <- mp_res_df_annot %>% 
+  dplyr::select(Cluster, care_id:timepoint, sample_barcode:idh_codel_subtype) %>% 
+  distinct()
+mp_by_subtype <- mp_res_df_annot_distinct %>% 
+  mutate(idh_codel_subtype = recode(idh_codel_subtype, `IDHmut-codel` = "IDH-O",
+                                    `IDHmut-noncodel` = "IDH-A")) %>% 
+  group_by(idh_codel_subtype, Cluster) %>% 
+  summarise(counts = n()) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = idh_codel_subtype, values_from = counts)
+# Total number of tumors per group.
+mp_by_subtype$IDH_A_freq <- mp_by_subtype$`IDH-A` / 45
+mp_by_subtype$IDH_O_freq <- mp_by_subtype$`IDH-O` / 29
+
+mp_by_subtype_long <- mp_by_subtype %>% 
+  dplyr::select(Cluster, IDH_A_freq, IDH_O_freq) %>% 
+  mutate(IDH_O_freq = ifelse(is.na(IDH_O_freq), 0, IDH_O_freq)) %>% 
+  pivot_longer(cols=c(IDH_A_freq, IDH_O_freq), names_to = "subtype", values_to = "freq") %>% 
+  mutate(Cluster = gsub("Cluster_", "MP_", Cluster))
+
+mp_by_subtype_long$Cluster <- factor(mp_by_subtype_long$Cluster, levels=c("MP_1", "MP_2", "MP_3", "MP_4", "MP_5", "MP_6",
+                                                                          "MP_7", "MP_8", "MP_9", "MP_10", "MP_11", "MP_12"))
+mp_by_subtype_long$subtype <- factor(mp_by_subtype_long$subtype, levels=c("IDH_O_freq", "IDH_A_freq"))
+
+
+pdf(paste0(fig_dir, "/edf4a_malignant_metaprogram_sample_contribution_by_tumor_type.pdf"), width = 4.5, height = 4, useDingbats = FALSE)
+ggplot(mp_by_subtype_long, aes(x=Cluster, y=freq*100, fill=subtype)) +
+  geom_bar(position="dodge", stat="identity") +
+  plot_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top") +
+  scale_fill_manual(values=c("IDH_A_freq" = "#800074", 
+                             "IDH_O_freq"="#298C8C"),
+                    labels=c("IDH_A_freq" = "Astro.",
+                             "IDH_O_freq" = "Oligo.")) +
+  labs(x="Malignant metaprogram", y="Percent contributing samples\n(proportional to tumor type)", fill="Tumor type")
+dev.off()
+
+# Restrict to astrocytomas
+mp_by_lab <- mp_res_df_annot_distinct %>% 
+  filter(idh_codel_subtype=="IDHmut-noncodel") %>% 
+  group_by(lab, Cluster) %>% 
+  summarise(counts = n()) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = lab, values_from = counts)
+mp_by_lab$Iavarone_lab_freq <- mp_by_lab$`Iavarone lab` / 8
+mp_by_lab$Suva_lab_freq <- mp_by_lab$`Suva lab` / 16
+mp_by_lab$Verhaak_lab_freq <- mp_by_lab$`Verhaak lab` / 21
+
+mp_by_lab_long <- mp_by_lab %>% 
+  dplyr::select(Cluster, Iavarone_lab_freq:Verhaak_lab_freq) %>% 
+  #mutate(IDH_O_freq = ifelse(is.na(IDH_O_freq), 0, IDH_O_freq)) %>% 
+  pivot_longer(cols=c( Iavarone_lab_freq:Verhaak_lab_freq), names_to = "lab", values_to = "freq") %>% 
+  mutate(Cluster = gsub("Cluster_", "MP_", Cluster))
+
+mp_by_lab_long$Cluster <- factor(mp_by_lab_long$Cluster, levels=c("MP_1", "MP_2", "MP_3", "MP_4", "MP_5", "MP_6",
+                                                                          "MP_7", "MP_8", "MP_9", "MP_10", "MP_11", "MP_12"))
+
+pdf(paste0(fig_dir, "/edf4b_malignant_metaprogram_sample_contribution_by_lab.pdf"), width = 4.5, height = 4, useDingbats = FALSE)
+ggplot(mp_by_lab_long, aes(x=Cluster, y=freq*100, fill=lab)) +
+  geom_bar(position="dodge", stat="identity") +
+  plot_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top") +
+  scale_fill_manual(values =c( "Iavarone_lab_freq"= "#7570b3", "Suva_lab_freq"="#d95f02", "Verhaak_lab_freq"="#1b9e77"),
+                    labels =c("Iavarone_lab_freq"="Lab 1 (n=8)", "Verhaak_lab_freq"="Lab 3 (n=21)", "Suva_lab_freq"="Lab 2 (n=16)"),
+                    name="Astrocytomas") +
+  labs(x="Metaprogram", y="Percent contributing samples\n(proportional to lab)")
+dev.off()
+
+
+
+### END ###
