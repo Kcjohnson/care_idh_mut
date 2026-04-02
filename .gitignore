@@ -1,3 +1,20 @@
+scripts/copyscat/CopyscAT
+
+scripts/copyscat/CopyscAT/**
+data/**
+figures/**
+results/**
+logs/**
+geo/**
+presentations/**
+processed_data/**
+.Rproj.user
+.Rhistory
+.Rdata
+.httr-oauth
+.DS_Store
+.nfs*
+
 # History files
 .Rhistory
 .Rapp.history
