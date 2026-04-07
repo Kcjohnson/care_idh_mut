@@ -1,32 +1,30 @@
 ##################################
-# Assign malignant cells to CARE IDHmut metaprograms based on p-value calculation for the first round
+# Assign malignant cells to CARE IDHmut metaprogram/state based on metaprogram scoring and p-value 
 # Author: Kevin Johnson
-# Date Updated: 2026.04.01
+# Date Updated: 2026.04.02
 ##################################
 
 library(tidyverse)
 library(RColorBrewer)
 library(viridis)
 library(Seurat)
-library(harmony)
 library(Matrix)
-library(ggpubr)
 library(openxlsx)
 
 proj_dir    <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut"
 fig_dir     <- file.path(proj_dir, "figures/")
-out_data_dir <- file.path(proj_dir, "processed_data/rna/classification/")
+out_data_dir <- file.path(proj_dir, "processed_data/rna/")
 script_dir  <- file.path(proj_dir, "scripts")
 
 setwd(proj_dir)
 
-# Avishay provided these helper scripts. Use the score_within_samples*() functions for malignant cells.
+# Avishay Spitzer provided these helper scripts. Use the score_within_samples*() functions for malignant cells.
 source(file.path(script_dir, "utils", "plot_theme.R"))
 source(file.path(script_dir, "utils", "caremut_utils.R"))
 
-### #### ### ### ### ### ###
+### ### ### ### ### ### ### ###
 # Set-up
-### #### ### ### ### ### ###
+### ### ### ### ### ### ### ###
 # Load in the CARE IDH-mutant metadata and count matrices.
 md <- read.table(paste0(proj_dir, "/processed_data/rna/care_mut_cleaned_snrna_metadata_n75_20260320.txt"), sep = "\t", row.names = 1, header = TRUE)
 md_trim <- md %>% 
@@ -39,18 +37,16 @@ umi_data_all <- readRDS("data/snrna/care_mut_umi_data_all_20230729.RDS")
 names(umi_data_all)
 
 
-# Load CARE-specific signatures and prior malignant and non-malignant signatures.
-# CARE IDH-mutant malignant metaprograms
-mut_mp <- read.table("results/metaprograms/malignant_downsampled/meta_programs_generated_for_all_mutants_n74_min_groupsize5_2026-04-01.csv", sep = ",", header = T)
-mut_mp$X <- NULL
-colnames(mut_mp) <- c("MP1_OPC", "MP2_AC", "MP3_RP", "MP4_CC", "MP5_MES", "MP6_AC2", "MP7_LQ", "MP8_MES2", "MP9_AC3", "MP10_Stress", "MP11_Mix", "MP12_Mix")
+# Prepare all relevant signatures in order to score CARE-MUT malignant cells
+
+# Load CARE IDH-mutant metaprograms
+mut_mp <- read.table("/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/metaprograms/care_mut_selected_malignant_metaprograms.csv", sep = ",", header = T, row.names = 1)
 mut_mp_list <- lapply(names(mut_mp), function(col_name) mut_mp[[col_name]])
 names(mut_mp_list) <-paste0(colnames(mut_mp), "_MUT")
 
-
 # Use top 50 genes from each signature, when possible, to be consistent with features used
 
-# Public IDH-A and IDH-O signatures from Tirosh Nature 2016 and Venteicher 2017
+# Public IDH-A and IDH-O signatures from Tirosh Nature 2016 and Venteicher 2017 Science papers (SmartSeq2 single cell data)
 # Venteicher Astrocytoma
 venteicher <- readWorkbook("data/misc/venteicher_table_s3.xlsx", startRow = 5, colNames = TRUE)
 venteicher_signatures <- venteicher %>% 
@@ -72,6 +68,19 @@ tirosh_signatures$Tirosh_OC_scRNA <- trimws(tirosh_signatures$Tirosh_OC_scRNA)
 tirosh_signatures$Tirosh_AC_scRNA <- trimws(tirosh_signatures$Tirosh_AC_scRNA)
 tirosh_signatures$Tirosh_Stemness_scRNA <- trimws(tirosh_signatures$Tirosh_Stemness_scRNA)
 tirosh_signatures_list <- as.list(tirosh_signatures[1:50,1:3])
+
+# Neftel et al Cell 2019 signatures 
+neftel_signatures <- read.delim("data/misc/neftel_metamodule_genelists.csv", header = TRUE, sep = ",")
+colnames(neftel_signatures) <- paste0(colnames(neftel_signatures), "_Neftel2019")
+neftel_signatures_list <- as.list(neftel_signatures)
+
+# CARE IDH-wildtype metaprograms
+care_wt_mps <- read.delim("data/misc/carewt_malignant_metaprograms.txt", sep = "\t", header = T)
+colnames(care_wt_mps) <- gsub("MP_", "WT_MP", colnames(care_wt_mps))
+colnames(care_wt_mps) <- gsub("[0-9]_", "_", colnames(care_wt_mps))
+colnames(care_wt_mps) <- gsub("MP1", "MP", colnames(care_wt_mps))
+wt_mp_list <- lapply(names(care_wt_mps), function(col_name) care_wt_mps[[col_name]])
+names(wt_mp_list) <-colnames(care_wt_mps)
 
 
 # Public brain development and injury signatures
@@ -100,25 +109,24 @@ names(sadick_astrocytes_list) <- paste0(names(sadick_astrocytes_list), "-sadick2
 reactive_astrocytes_list <- sadick_astrocytes_list[4]
 names(reactive_astrocytes_list) <- "React.Astro_Sadick2022"
 
+
 # Metaprograms from Gavish et al Nature 2023
 gavish_signatures <- readWorkbook("data/misc/gavish_nature_2023_signatures.xlsx", sheet = 1)
 colnames(gavish_signatures) <- paste0(colnames(gavish_signatures), "_Gavish2023")
 gavish_signatures_select <- gavish_signatures[c(6, 12, 13, 16, 25, 26, 27, 28, 29, 38, 39)]
 gavish_signatures_select_list <- lapply(gavish_signatures_select, function(x) head(x, 50))
 
-sigs_list <- c(mut_mp_list, venteicher_sig_list, tirosh_signatures_list, liu_markers_list, reactive_astrocytes_list, gavish_signatures_select_list)
+sigs_list <- c(mut_mp_list, venteicher_sig_list, tirosh_signatures_list, neftel_signatures_list, wt_mp_list, liu_markers_list, reactive_astrocytes_list, gavish_signatures_select_list)
 
-
-
-### #### ### ### ### ### ### ### #### ### ### ### ### ###
-# Score malignant cells within a sample 
-### #### ### ### ### ### ### ### #### ### ### ### ### ###
+#########################################################################################
+##### Assign within-sample metaprogram score
+#########################################################################################
 
 # Extract the malignant cells. I am removing SJ02-3, which had only a few malignant cells post-QC and should not be considered for downstream analyses.
 md_malignant <- md %>% 
   filter(CellType_final=="Malignant", SampleID!="SJ02-3") 
 
-# Define a function that subsets columns based on CellID
+# Define a function that subsets columns based on CellID variable
 subset_columns <- function(mat, cell_ids) {
   col_idx <- which(colnames(mat) %in% cell_ids)
   mat[, col_idx, drop = FALSE]
@@ -129,24 +137,26 @@ umi_data_all_malignant <- map(umi_data_all, subset_columns, cell_ids = md_malign
 names(umi_data_all_malignant)
 
 # Perform the scoring within a single sample. Note that AddModuleScore results differ depending on cell/sample dataset.
-set.seed(1)
+set.seed(43)
 mp_scores <- score_within_samples_caremut(umi_data_all_malignant, md = md_malignant, sigs = sigs_list)
 
+# Warning messages:
+# 1: In simpleLoess(y, x, w, span, degree = degree, parametric = parametric,  ... :
+#                    pseudoinverse used at -2.0523
+
 # Save output so that it can be used for downstream analyses:
-write.table(mp_scores, file = paste0(proj_dir, "/results/scoring/malignant_signature_scores_first_round.txt"), quote = FALSE, sep = "\t", row.names = TRUE, col.names = TRUE)
+write.table(mp_scores, file = paste0(proj_dir, "/results/scoring/malignant_signature_scores_final_metaprograms.txt"), quote = FALSE, sep = "\t", row.names = TRUE, col.names = TRUE)
 
 # Reading backing in once complete.
-# mp_scores <- read.table(paste0(proj_dir, "/results/scoring/malignant_signature_scores_first_round.txt"), sep = "\t", row.names = 1, header = TRUE)
+# mp_scores <- read.table(paste0(proj_dir, "/results/scoring/malignant_signature_scores_final_metaprograms.txt"), sep = "\t", row.names = 1, header = TRUE)
 
-# Restrict to only those features needed for this analysis.
 mp_scores_md <- mp_scores %>% 
-  dplyr::select(CellID, SampleID, MP1_OPC_MUT:MP12_Mix_MUT)
+  dplyr::select(CellID, SampleID, MP_AC1_MUT:MP_CC_MUT)
 
 
-
-### #### ### ### ### ### ### ### #### ### ### ### ### ###
-# Assign cell state based on shuffled data
-### #### ### ### ### ### ### ### #### ### ### ### ### ###
+#####################################################################
+### Cell state scores - null distribution
+#####################################################################
 # mdata is an object (tibble) that contains the meta-data for the cells that should be classified (Sample, Patient, Timepoint etc.).
 # The object also must include the CellID variable that identifies the cells.
 # Due to the shuffling each variable in the tibble is theoretically normally distributed (or is at least close to being ND).
@@ -154,22 +164,26 @@ mdata <- mp_scores_md %>%
   dplyr::select(CellID, SampleID, ends_with("MUT")) %>% 
   as_tibble()
 
-# The approach requires variables to be named in a certain way:
-sigs <- sigs_list[1:12]
+## The approach requires variables to be named in a certain way:
+sigs <- sigs_list[1:6]
 
+umi_data_all_malignant_clean <- Filter(function(x) nnzero(x) > 0, umi_data_all_malignant)
+names(umi_data_all_malignant_clean)
 
 # We call this function to generate a NULL distribution to facilitate classification. According to the configured parameters
 # it will sample 5000 cells from the pool of cells, shuffle the expression values while maintaining the mean expression of
 # each gene and score the artificial cells for the meta-programs. It will repeat the process 20 times to generate a NULL 
 # distribution of ~100K cells. It returns a tibble of ~100K x n (where n is the number of meta-programs)
 set.seed(43)
-permuted_data_all_mut <- generate_null_dist(umi_data_list = umi_data_all_malignant,
+permuted_data_all_mut <- generate_null_dist(umi_data_list = umi_data_all_malignant_clean,
                                     md = mdata,
                                     sigs = sigs,
                                     n_iter = 20, n_cells = 5000, verbose = T)
 
 # Save output of permuted data
-saveRDS(permuted_data_all_mut, paste0(proj_dir, "/results/scoring/malignant_metaprogram_first_round_permuted_data_all.RDS"))
+saveRDS(permuted_data_all_mut, paste0(out_data_dir, "caremut_signatures_permuted_data_all.RDS"))
+#permuted_data_all_mut <- readRDS(paste0(out_data_dir, "caremut_signatures_permuted_data_all.RDS"))
+
 permuted_data <- permuted_data_all_mut
 
 state_programs <- sigs
@@ -191,15 +205,13 @@ scores_nd <- lapply(colnames(permuted_data), function(mp) {
 
 # This provides the mean and standard deviation per signature/metaprogram
 scores_nd <- do.call(rbind, scores_nd)
-
 # Create vectors for these data
 mean_vec <- setNames(scores_nd$Mean, scores_nd$MP)
 sd_vec <- setNames(scores_nd$SD, scores_nd$MP)
 
-
-### #### ### ### ### ### ### ### #### ### ### ### ### ###
+####################################################################################################################################
 # Plot the actual scores vs. the NULL distribution for each MP
-### #### ### ### ### ### ### ### #### ### ### ### ### ###
+####################################################################################################################################
 library(reshape2)
 library(ggdist)
 set.seed(43)
@@ -235,11 +247,11 @@ ggplot(data = dm, aes(x = value, y = after_stat(ncount), color = DataType, linet
   plot_theme
 
 
-### #### ### ### ### ### ### ### #### ### ### ### ### ###
-# Cell state classification 
-### #### ### ### ### ### ### ### #### ### ### ### ### ###
+####################################################################################################################################
+# Cell state classification
+####################################################################################################################################
 # Names of all MPs to-be-classified should be included in this vector (can be used to exclude MPs that reflect artifact/low quality etc.)
-state_vars <- names(state_programs)[grep("MP1_OPC_MUT|MP2_AC_MUT|MP4_CC_MUT|MP5_MES_MUT|MP6_AC2_MUT", names(state_programs))]
+state_vars <- names(state_programs)
 
 # Melt the data to make the computation easier
 state_data <- melt(data = mdata %>%
@@ -270,22 +282,20 @@ state_data <- state_data %>%
 # However, we can also use nominal p-value depending on threshold/dataset
 state_data$p.sig <- state_data$p.adj < .05
 
-# There were 78,585 cells that scored significant for multiple meta-programs. That's quite a bit, but some programs are similar (AC1/AC2/MES).
-tmp_sig <- state_data %>% 
-  group_by(CellID, p.sig) %>% 
-  summarise(counts = n()) %>% 
-  filter(p.sig == TRUE, counts > 1)
-
 # Compute the classification statistics for each MP/gene set 
 state_stats <- state_data %>%
   group_by(Program) %>%
   summarise(n = sum(p.sig == T), N = n(), Freq = n / N)
 
+
 # This is the actual classification step. We filter out the statistically insignificant scores and classify the cell
-# to the MP with the maximal signal.
-# Classify CC separate from the other states.
+# to the MP with the maximal signal. Classify CC separate from the other states.
+# The classification will do the following:
+# 1. Separate out cell cycle since cells can be classified as cycling independent of AC/MES/OPC/NPC state
+# 2. Restrict only those programs with adj. p-value < 0.05
+# 3. Rank by descending score such multiple significant scores will be assigned to the one with the highest Score (AddModuleScore).
 state_data_classify <- state_data %>% 
-  filter(!Program%in%c("MP4_CC_MUT")) %>% 
+  filter(!Program%in%c("MP_CC_MUT")) %>% 
   group_by(CellID) %>%
   filter(p.sig == T) %>%
   arrange(desc(Score)) %>%
@@ -294,7 +304,7 @@ state_data_classify <- state_data %>%
 
 # Perform this step separately for Cell Cycle:
 state_data_classify_cc <- state_data %>% 
-  filter(Program=="MP4_CC_MUT") %>% 
+  filter(Program=="MP_CC_MUT") %>% 
   group_by(CellID) %>%
   filter(p.sig == T) %>%
   arrange(desc(Score)) %>%
@@ -302,10 +312,11 @@ state_data_classify_cc <- state_data %>%
   ungroup()
 
 
-### #### ### ### ### ### ### ### #### ### ### ### ### ###
-# Inspect results and write out the results
-### #### ### ### ### ### ### ### #### ### ### ### ### #### If you have a large proportion of cells that are "Undifferentiated" (i.e. they did not achieve a significant adjusted p-value for any MP)
-# then you can adjust the multiple-adjustment method or classification threshold to less stringent values
+####################################################################################################################################
+# Assign the state
+####################################################################################################################################
+# If you have a large proportion of cells that are "Undifferentiated" (i.e. they did not achieve a significant adjusted p-value for any MP)
+# then you can adjust the multiple-adjustment method or classification threshold to less stringent values.
 state_vec <- setNames(rep("Undifferentiated", nrow(mdata)), mdata$CellID)
 state_vec[state_data_classify$CellID] <- state_data_classify$Program
 table(state_vec)
@@ -314,11 +325,10 @@ table(state_vec) / length(state_vec)
 mdata$State <- state_vec[mdata$CellID]
 table(mdata$State)
 
-# Visual inspection for whether there is a difference in quality across the assigned states
-tmp <- mdata %>% 
+state_complexity <- mdata %>% 
   inner_join(md, by=c("CellID", "SampleID")) 
 
-tmp %>% 
+state_complexity %>% 
   mutate(State = factor(State, c(names(mut_mp_list), "Undifferentiated"))) %>%
   ggplot(aes(x = State, y = nFeature_RNA)) + 
   ggdist::stat_halfeye(adjust = .5, width = .75, justification = -.2, .width = 0, point_colour = NA) + 
@@ -326,20 +336,20 @@ tmp %>%
   coord_cartesian(xlim = c(1.2, NA)) +
   xlab("") +
   ylab("Complexity") +
-  geom_hline(yintercept = median(tmp$nFeature_RNA), linetype = "dashed", size = 1, color = "red") +
+  geom_hline(yintercept = median(state_complexity$nFeature_RNA), linetype = "dashed", size = 1, color = "red") +
   scale_y_continuous(breaks = seq(0, 7000, 1000)) +
   theme_bw() +
   theme(panel.grid.major = element_line())
 
-
-# Cell cycle is not considered a cellular state but rather a feature (since cells can have a clear identity such as OPC/AC/MES and still be cycling) 
+## 1. Cell cycle is not considered a cellular state but rather a feature (since cells can have a clear identity such as OPC or NPC and still be cycling) 
 mdata <- mdata %>% 
   inner_join(md_trim, by="SampleID") %>% 
   mutate(isCC = ifelse(mdata$CellID%in%state_data_classify_cc$CellID, TRUE, FALSE))
 
+table(mdata$State, mdata$isCC)
 
-# Create a cell state assignment text file that can be used as input into the NMF.
-write.table(mdata, file = paste0(proj_dir, "/results/scoring/malignant_first_round_cell_state_assignment.txt"), quote = FALSE, sep = "\t", row.names = TRUE, col.names = TRUE)
+# Write out the current cell state classification approach.
+write.table(mdata, file = paste0(proj_dir, "/results/scoring/caremut_malignant_cell_state_assignment.txt"), quote = FALSE, sep = "\t", row.names = TRUE, col.names = TRUE)
 
 
 ### END ###

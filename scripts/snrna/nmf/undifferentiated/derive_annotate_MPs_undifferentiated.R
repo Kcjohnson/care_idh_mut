@@ -60,8 +60,8 @@ malignant_undiff_nmf_metaprograms <- derive_NMF_metaprograms(Genes_nmf_w_basis =
                                                       n_genes = 50)
 
 # Save output as RDS file
-saveRDS(malignant_nmf_metaprograms, file= "/gpfs/gibbs/pi/verhaak/kcj28/care_mut/results/nmf_res/metaprograms/undifferentiated/undifferentiated_nmf_metaprograms_out.RDS")
-# malignant_nmf_metaprograms <- readRDS("/gpfs/gibbs/pi/verhaak/kcj28/care_mut/results/nmf_res/metaprograms/undifferentiated/undifferentiated_nmf_metaprograms_out.RDS")
+saveRDS(malignant_nmf_metaprograms, file= "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/metaprograms/undifferentiated_downsampled/undifferentiated_nmf_metaprograms_out.RDS")
+# malignant_nmf_metaprograms <- readRDS("/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/metaprograms/undifferentiated_downsampled/undifferentiated_nmf_metaprograms_out.RDS")
 
 
 # Visualize metaprograms:
