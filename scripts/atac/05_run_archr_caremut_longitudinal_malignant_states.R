@@ -1,14 +1,14 @@
 ##############################
-### Run ArchR peak calling analysis on CAREmut multiome ATAC data longitudinal analysis of malignant cell states
+### Longitudinal peak accessibility differences across malignant states within a patient
 ### Author: Kevin Johnson
-### Updated: 2024.05.06
+### Updated: 2026.04.08
 ##############################
 
-## Part 6: Longitudinal per-patient analysis of differential chromatin accessibility per cell state
+## Part 5: Longitudinal per-patient analysis of differential chromatin accessibility per cell state
 
-## ArchR creates several directories automatically when creating arrow files and ArchR projects.
-workdir <- "/gpfs/gibbs/pi/verhaak/kcj28/care_mut/results/archr/"
+workdir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/atac/"
 setwd(workdir)
+fig_dir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/figures/archr/"
 
 ## Load necessary packages.
 library(dplyr)
@@ -18,9 +18,6 @@ library(pheatmap)
 library(chromVARmotifs)
 library(BSgenome.Hsapiens.UCSC.hg38)
 
-## Specify output directory to drop figures:
-fig_dir <- "/gpfs/gibbs/pi/verhaak/kcj28/care_mut/results/figures/archr/"
-
 #### Set-up #####
 ## Check available cores. ArchR recommends setting total number of cores 1/2 to 3/4 of available cores,
 num_cores <- detectCores() # e.g., 36
@@ -29,80 +26,20 @@ addArchRThreads(threads = n_threads)
 ## Each R session requires that the genome is also specified and must match alignment.
 addArchRGenome("hg38")
 
-# This larger dataset contains both IDHmut and IDHwt tumors that we've processed. Need to restrict to IDHmut-only tumors.
-projMONITOR <- loadArchRProject("Save-AllSamples-2024")
+# This project was created in "04_run_archr_caremut_peakcall_malignant_states.R".
+CARE_filt_rna_malignant_peaks <- loadArchRProject("Save-CAREmut-Malignant-RNA-Peaks")
 
-projMONITOR_filt <- filterDoublets(projMONITOR)
+CARE_filt_rna_malignant_peaks_long <- saveArchRProject(ArchRProj = CARE_filt_rna_malignant_peaks, 
+                                                       outputDirectory = "Save-CAREmut-Malignant-RNA-Peaks-LongitudinalPeak", 
+                                                       load = TRUE) 
 
 ############################################################################################################################
 #..........................................................................................................................#
 ############################################################################################################################
-# CAREmut data that was processed by Seurat and cell types were assigned based on RNA.
-mut_md <- read.table("/gpfs/gibbs/pi/verhaak/kcj28/care_mut/processed_data/rna/care_mut_cleaned_snrna_metadata_n75_20240212.txt", sep = "\t", header = TRUE)
 
-# For this analysis, only ATAC profiles were generated for samples processed by the Verhaak lab and defined by RNA as malignant cells
-mut_md_verhaak <- mut_md %>% 
-  filter(lab=="Verhaak lab", CellType_final=="Malignant")
-
-## Create a data.frame that contains the essential information to be merged and inspected.
-atac_df <- data.frame(projMONITOR_filt$cellNames, projMONITOR_filt@cellColData$Sample, projMONITOR_filt@cellColData$TSSEnrichment)
-
-# The cell names are a little different between RNA (Seurat) and ATAC (ArchR). Need to create a common linker.
-atac_df$CellID <- gsub("#", "-", atac_df$projMONITOR_filt.cellNames)
-# 71,088 cells present in ATACseq data that pass doublet removal and are also found in snRNAseq data that passed QC for IDH-mutant.
-sum(atac_df$CellID%in%mut_md_verhaak$CellID)
-
-# Combine the two data.frames by adding on the RNA data and filtering out what's leftover.
-atac_df_filt_rna <- atac_df %>% 
-  inner_join(mut_md_verhaak, by="CellID") 
-
-## Identify which cells to keep in the analysis. 
-tmp <- getCellNames(projMONITOR_filt)
-rna_cells = tmp[which(tmp%in%atac_df_filt_rna$projMONITOR_filt.cellNames)]  
-
-## Subset the cells to only those that also have RNA.
-CARE_filt_rna_malignant <- subsetCells(ArchRProj = projMONITOR_filt, cellNames = rna_cells)
-
-# Restrict to IDHmut malignant cells and classify by RNA-based state.
-cell_class <- read.table("/gpfs/gibbs/pi/verhaak/kcj28/care_mut/processed_data/rna/classification/caremut_all_select_state_assignment_20240416.txt",  sep = "\t", header = TRUE)
-cell_class <- cell_class %>% 
-  mutate(idh_codel_subtype = recode(idh_codel_subtype, `IDHmut-codel` = "IDH-O",
-                                    `IDHmut-noncodel` = "IDH-A"),
-         State = recode(State, `MP_AC1_MUT` = "AC-like",
-                        `MP_OPC_MUT` = "OPC-like",
-                        `MP_NPC_MUT` = "NPC-like",
-                        `MP_MES_MUT` = "MES-like",
-                        `MP_AC2_MUT` = "AC-like",
-                        "Undifferentiated" = "Undifferentiated")) 
-
-cell_class_trim <- cell_class %>% 
-  dplyr::select(CellID, State, isCC)
-mut_md_verhaak_state <- mut_md_verhaak %>% 
-  left_join(cell_class_trim, by="CellID") %>%  
-  mutate(group = gsub("-like", "", ifelse(CellType_final=="Malignant", State, CellType_final))) 
-
-
-CARE_filt_rna_malignant$CellID <- gsub("#", "-", CARE_filt_rna_malignant$cellNames)
-
-# Restricting to malignant cells and the malignant state classification.
-cell_class_filt <- mut_md_verhaak_state[mut_md_verhaak_state$CellID %in%CARE_filt_rna_malignant$CellID, ]
-cell_class_filt_ord <- cell_class_filt[match(CARE_filt_rna_malignant$CellID, cell_class_filt$CellID), ]
-all(CARE_filt_rna_malignant$CellID==cell_class_filt_ord$CellID)
-CARE_filt_rna_malignant$CellStateGroup <- cell_class_filt_ord$group
-
-
-CARE_filt_rna_malignant <- saveArchRProject(ArchRProj = CARE_filt_rna_malignant, outputDirectory = "Save-CAREmut-Malignant-RNA-Longitudinal", load = TRUE, dropCells = TRUE) 
-
-CARE_filt_rna_malignant <- loadArchRProject("Save-CAREmut-Malignant-RNA-Longitudinal")
-
-all(CARE_filt_rna_malignant$CellID==cell_class_filt_ord$CellID)
-CARE_filt_rna_malignant$care_id <- cell_class_filt_ord$care_id
-
-
-
-# CRITICAL STEP!
-# See following github discussion for treatment vs. control style anylases: https://github.com/GreenleafLab/ArchR/discussions/696
-CARE_filt_rna_malignant <- addCellColData(ArchRProj = CARE_filt_rna_malignant, data = paste0(CARE_filt_rna_malignant@cellColData$CellStateGroup,"_x_",CARE_filt_rna_malignant@cellColData$Sample), name = "StateBySample", cells = getCellNames(CARE_filt_rna_malignant), force = TRUE)
+# Construct a sample-specific identifier per malignant state (e.g., "AC_x_SAMPLEID")
+# This will allow us to compare gene accessibility between two timepoints for the same state
+CARE_filt_rna_malignant_peaks_long <- addCellColData(ArchRProj = CARE_filt_rna_malignant, data = paste0(CARE_filt_rna_malignant@cellColData$CellStateGroup,"_x_",CARE_filt_rna_malignant@cellColData$Sample), name = "StateBySample", cells = getCellNames(CARE_filt_rna_malignant), force = TRUE)
 table(CARE_filt_rna_malignant$StateBySample)
 
 ############################################################################################################################
@@ -110,7 +47,7 @@ table(CARE_filt_rna_malignant$StateBySample)
 ############################################################################################################################
 # Make pseudo bulk measurements for cell state groups by sample
 # Pseudo-bulk refers to a grouping of single cells where the data from each single cell is combined into a single pseudo-sample.
-CARE_filt_rna_malignant <- addGroupCoverages(ArchRProj = CARE_filt_rna_malignant, 
+CARE_filt_rna_malignant_peaks_long <- addGroupCoverages(ArchRProj = CARE_filt_rna_malignant, 
                                                groupBy = "StateBySample",  #  AC_x_NL04-1
                                                minCells = 40,  # default
                                                maxCells = 500,  # default
@@ -122,7 +59,7 @@ CARE_filt_rna_malignant <- addGroupCoverages(ArchRProj = CARE_filt_rna_malignant
 pathToMacs2 <- findMacs2()
 
 # Iterative overlap peak merging procedure
-CARE_filt_rna_malignant <- addReproduciblePeakSet(
+CARE_filt_rna_malignant_peaks_long <- addReproduciblePeakSet(
   ArchRProj = CARE_filt_rna_malignant, 
   groupBy = "StateBySample", 
   pathToMacs2 = pathToMacs2,
@@ -130,23 +67,23 @@ CARE_filt_rna_malignant <- addReproduciblePeakSet(
 )
 
 ## Needed to derive marker peaks.
-CARE_filt_rna_malignant <- addPeakMatrix(CARE_filt_rna_malignant)
+CARE_filt_rna_malignant_peaks_long <- addPeakMatrix(CARE_filt_rna_malignant)
 
-# Save this following peak matrix creation so that it is easier to run in the future.
-CARE_filt_rna_malignant <- saveArchRProject(ArchRProj = CARE_filt_rna_malignant, outputDirectory = "Save-CAREmut-Malignant-RNA-Longitudinal", load = TRUE)
-
-CARE_filt_rna_malignant <- loadArchRProject("Save-CAREmut-Malignant-RNA-Longitudinal")
+# Save so that it is quicker to run in the future.
+CARE_filt_rna_malignant_peaks_long <- saveArchRProject(ArchRProj = CARE_filt_rna_malignant_peaks, 
+                                                       outputDirectory = "Save-CAREmut-Malignant-RNA-Peaks-LongitudinalPeak", 
+                                                       load = TRUE) 
 
 ############################################################################################################################
 #..........................................................................................................................#
 ############################################################################################################################
 ## Add add motif annotations.
 if("Motif" %ni% names(CARE_filt_rna_malignant@peakAnnotation)){
-  CARE_filt_rna_malignant <- addMotifAnnotations(ArchRProj = CARE_filt_rna_malignant, motifSet = "cisbp", name = "Motif")
+  CARE_filt_rna_malignant_peaks_long <- addMotifAnnotations(ArchRProj = CARE_filt_rna_malignant, motifSet = "cisbp", name = "Motif")
 }
 
 ## Add ENCODE annotations 
-CARE_filt_rna_malignant <- addArchRAnnotations(ArchRProj = CARE_filt_rna_malignant, collection = "EncodeTFBS")
+CARE_filt_rna_malignant_peaks_long <- addArchRAnnotations(ArchRProj = CARE_filt_rna_malignant, collection = "EncodeTFBS")
 
 ### ### ### ### ### ### ### ### ### ### ### 
 #Patient specific longitudinal changes

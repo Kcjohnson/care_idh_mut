@@ -487,9 +487,6 @@ mp_scores <- score_within_samples_caremut(umi_data_all, md = pdgfrai_md, sigs = 
 # saveRDS(mp_scores, paste0(out_data_dir, "pdgfrai_mp_sig_scores_20260406.RDS"))
 # mp_scores <- readRDS(paste0(out_data_dir, "pdgfrai_mp_sig_scores_20260406.RDS"))
 
-# Previous run
-mp_scores_prior <- readRDS("/vast/palmer/pi/verhaak/kcj28/care_mut/processed_data/perturbation/pdgfrai/pdgfrai_mp_sig_scores_20260406.RDS")
-identical(mp_scores, mp_scores_prior[ ,1:14])
 
 #####################################################################
 ### Cell state score assignment

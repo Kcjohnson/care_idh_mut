@@ -1,14 +1,15 @@
 ##############################
 ### Run ArchR peak calling analysis on CAREmut multiome ATAC data for all cell types
 ### Author: Kevin Johnson
-### Updated: 2024.06.12
+### Updated: 2026.04.08
 ##############################
 
 ## Part 3: Peak calling on all RNA-defined CELL TYPES across IDH-mutant tumors
 
 ## ArchR creates several directories automatically when creating arrow files and ArchR projects.
-workdir <- "/gpfs/gibbs/pi/verhaak/kcj28/care_mut/results/archr/"
+workdir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/atac/"
 setwd(workdir)
+fig_dir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/figures/archr/"
 
 ## Load necessary packages.
 library(dplyr)
@@ -18,156 +19,32 @@ library(pheatmap)
 library(chromVARmotifs)
 library(BSgenome.Hsapiens.UCSC.hg38)
 
-## Specify directories:
-fig_dir <- "/gpfs/gibbs/pi/verhaak/kcj28/care_mut/results/figures/archr/"
-
 #### Set-up #####
 ## Check available cores. ArchR recommends setting total number of cores 1/2 to 3/4 of available cores,
 num_cores <- detectCores() # e.g., 36
 n_threads <- num_cores/2
 addArchRThreads(threads = n_threads) 
+
 ## Each R session requires that the genome is also specified and must match alignment.
 addArchRGenome("hg38")
 
 # Load the ArchR object for IDHmut final analysis set. Doublets have been removed, only cells that intersect with passed qc for RNA, and RNA annotated cell states.
 CARE_filt_rna_all <- loadArchRProject("Save-CAREmut-All-RNA")
 
-atac_out <- data.frame(CARE_filt_rna_all@cellColData)
-atac_out_filt <- atac_out %>% 
-  mutate(CellType_final = recode(CellType_final, `Mural` = "Endo/Mural",
-                                 `Endothelial` = "Endo/Mural",
-                                 `InhNeuron` = "Neuron",
-                                 `ExcNeuron` = "Neuron")) %>% 
-  filter(CellType_final!="Unresolved")
-
-# IMPORTANT - 98.6% of cells would have clusters that are defined as the same cell type (i.e., Malignant==Malignant, Myeloid==Myeloid etc).
-# Note: That we have not defined unresolved cells in ATAC dataset, rather simply using 
-sum(atac_out_filt$CellType_final==atac_out_filt$CellType_ATAC)/length(atac_out_filt$CellType_final)
-
-potential_mismatch <- atac_out_filt %>% 
-  filter(CellType_final!=CellType_ATAC) 
-table(potential_mismatch$CellType_final, potential_mismatch$CellType_ATAC)
-
-# Use this to extract the legend from a plot
-g_legend <- function(a.gplot) {
-  tmp <- ggplot_gtable(ggplot_build(a.gplot))
-  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-  legend <- tmp$grobs[[leg]]
-  return(legend)
-}
-
-# Myeloid module 
-p_myeloid <- plotEmbedding(ArchRProj = CARE_filt_rna_all, colorBy = "cellColData", name = "Module.Myeloid", embedding = "UMAP")  +
-  labs(x="", y="", color="Module score", title="") + theme(panel.border=element_blank()) + guides(color = guide_legend(override.aes = list(size = 4)))
-legend_grob <- g_legend(p_myeloid)
-p_myeloid <- plotEmbedding(ArchRProj = CARE_filt_rna_all, colorBy = "cellColData", name = "Module.Myeloid", embedding = "UMAP") +
-  labs(x="", y="", color="Module score", title="") + theme(panel.border=element_blank())  + guides(fill=FALSE)
-
-plotPDF(p_myeloid, name = "unadjusted_all_myeloid.pdf", ArchRProj = CARE_filt_rna_all, addDOC = FALSE, width = 5, height = 5)
-ggsave(paste0(fig_dir, "unadjusted_all_umap_myeloid.png"), p_myeloid, width = 4, height = 4, dpi = 300)
-ggsave(paste0(fig_dir, "unadjusted_all_umap_myeloid_legend.pdf"), legend_grob, width = 3, height = 3, dpi = 300)
-
-# Oligodendrocyte module 
-p_oligo <- plotEmbedding(ArchRProj = CARE_filt_rna_all, colorBy = "cellColData", name = "Module.Oligodendrocyte", embedding = "UMAP")  +
-  labs(x="", y="", color="Module score", title="") + theme(panel.border=element_blank()) + guides(color = guide_legend(override.aes = list(size = 4)))
-legend_grob <- g_legend(p_oligo)
-p_oligo <- plotEmbedding(ArchRProj = CARE_filt_rna_all, colorBy = "cellColData", name = "Module.Oligodendrocyte", embedding = "UMAP") +
-  labs(x="", y="", color="Module score", title="") + theme(panel.border=element_blank())  + guides(fill=FALSE)
-
-plotPDF(p_oligo, name = "unadjusted_all_oligo.pdf", ArchRProj = CARE_filt_rna_all, addDOC = FALSE, width = 5, height = 5)
-ggsave(paste0(fig_dir, "unadjusted_all_umap_oligo.png"), p_oligo, width = 4, height = 4, dpi = 300)
-ggsave(paste0(fig_dir, "unadjusted_all_umap_oligo_legend.pdf"), legend_grob, width = 3, height = 3, dpi = 300)
-
-
-df <- getCellColData(CARE_filt_rna_all, select = c("log10(nFrags)", "TSSEnrichment"))
-p <- ggPoint(
-  x = df[,1], 
-  y = df[,2], 
-  colorDensity = TRUE,
-  continuousSet = "sambaNight",
-  xlabel = "Log10 Unique Fragments",
-  ylabel = "TSS Enrichment",
-  xlim = c(log10(500), quantile(df[,1], probs = 0.99)),
-  ylim = c(0, quantile(df[,2], probs = 0.99))
-) + geom_hline(yintercept = 4, lty = "dashed") + geom_vline(xintercept = 3, lty = "dashed")
-
-pdf(paste0(fig_dir, "all_celltypes_archr_all_cells_nfrags_vs_tss.pdf"), width = 4, height = 4, useDingbats = FALSE, bg = "transparent")
-p
-dev.off()
-png(paste0(fig_dir, "all_celltypes_archr_all_cells_nfrags_vs_tss.png"), width = 4, height = 4, units = "in", res=300)
-p
-dev.off()
-
-p1 <- plotGroups(
-  ArchRProj = CARE_filt_rna_all, 
-  groupBy = "patient_id", 
-  colorBy = "cellColData", 
-  name = "TSSEnrichment",
-  plotAs = "violin",
-  maxCells = 10000,
-) 
-
-table(CARE_filt_rna_all$patient_id)
-pdf(paste0(fig_dir, "per_patient_tss_scores.pdf"), width = 8, height = 5, useDingbats = FALSE, bg = "transparent")
-p1
-dev.off()
-
-
-p2 <- plotGroups(
-  ArchRProj = CARE_filt_rna_all, 
-  groupBy = "patient_id", 
-  colorBy = "cellColData", 
-  name = "log10(nFrags)",
-  plotAs = "violin",
-  maxCells = 10000
-) + labs(x="")
-
-pdf(paste0(fig_dir, "per_patient_nfrags.pdf"), width = 8, height = 5, useDingbats = FALSE, bg = "transparent")
-p2
-dev.off()
-
-pdf(paste0(fig_dir, "per_patient_tss_vs_nfrags.pdf"), width = 6, height = 4, useDingbats = FALSE, bg = "transparent")
-ggAlignPlots(p2, p1, type = "v")
-dev.off()
-
-cols <- c("#BFBADA", "#FCCDE5", "#BC80BD", "#FFED6F", "#8DD3C7", "#FB8072",
-          "#FFFFB3", "#80B1D3", "#B3DE69", "gray80")
-names(cols) <- names(table(CARE_filt_rna_all$CellType_final)) 
-atac_cols <- c("#BFBADA", "#FCCDE5", "#8DD3C7", "#FB8072", "#80B1D3", "#BC80BD", "#B3DE69")
-names(atac_cols) <- names(table(CARE_filt_rna_all$CellType_ATAC)) 
-
-umap_rna <- plotEmbedding(ArchRProj = CARE_filt_rna_all, colorBy = "cellColData", name = "CellType_final", embedding = "UMAP", pal=cols)
-umap_atac <- plotEmbedding(ArchRProj = CARE_filt_rna_all, colorBy = "cellColData", name = "CellType_ATAC", embedding = "UMAP", pal=atac_cols)
-ggAlignPlots(umap_rna, umap_atac, type = "h")
-
-# Cell state
-p_cell_state <- plotEmbedding(ArchRProj = CARE_filt_rna_all, colorBy = "cellColData", name = "CellType_final", embedding = "UMAP", pal = cols) +
-  labs(x="", y="", color="RNA cell state", title="") + theme(panel.border=element_blank()) +  guides(color = guide_legend(override.aes = list(size = 4)))
-legend_grob <- g_legend(p_cell_state)
-p_cell_state <- plotEmbedding(ArchRProj = CARE_filt_rna_all, colorBy = "cellColData", name = "CellType_final", embedding = "UMAP", pal = cols) +
-  labs(x="", y="", color="RNA cell state", title="") + theme(panel.border=element_blank())  + guides(color=FALSE)
-
-plotPDF(p_cell_state, name = "unadjusted_all_umap_cell_state.pdf", ArchRProj = CARE_filt_rna_all, addDOC = FALSE, width = 5, height = 5)
-ggsave(paste0(fig_dir, "unadjusted_all_umap_cell_state.png"), p_cell_state, width = 4, height = 4, dpi = 300)
-ggsave(paste0(fig_dir, "unadjusted_all_umap_cell_state_legend.pdf"), legend_grob, width = 3, height = 3, dpi = 300)
-
-
-
-# Remove "Unresolved" (RNA-based) cells from further analysis since it may cause issues. Unresolved are mostly malignant/astrocytes.
+# Remove "Unresolved" (RNA-based) cells from further analysis since it may cause issues. Unresolved are mostly malignant/astrocytes, which seem to be most prone to misclassification in glioma.
 atac_df <- data.frame(CARE_filt_rna_all@cellColData)
 
 atac_df_filt <- atac_df %>% 
   filter(CellType_final!="Unresolved")
-tmp <- getCellNames(CARE_filt_rna_all)
-rna_cells = tmp[which(tmp%in%rownames(atac_df_filt))]  
+current_rna_atac_cells <- getCellNames(CARE_filt_rna_all)
+rna_cells_to_keep = current_rna_atac_cells[which(current_rna_atac_cells%in%rownames(atac_df_filt))]  
 
 # Subset the cells to only those that also have RNA.
-CARE_filt_rna_all_filt <- subsetCells(ArchRProj = CARE_filt_rna_all, cellNames = rna_cells)
-
+CARE_filt_rna_all_filt <- subsetCells(ArchRProj = CARE_filt_rna_all, cellNames = rna_cells_to_keep)
 
 # Add grade information
-patient_md <- read.delim("/gpfs/gibbs/pi/verhaak/kcj28/care_mut/data/metadata/clinical_patient_genomic_md_20240608.txt", sep="\t", header = TRUE)
-sample_md <- read.delim("/gpfs/gibbs/pi/verhaak/kcj28/care_mut/data/metadata/clinical_samples_genomic_md_20240608.txt", sep="\t", header = TRUE)
+patient_md <- read.delim("/vast/palmer/pi/verhaak/kcj28/care_mut/data/metadata/clinical_patient_genomic_md_20240608.txt", sep="\t", header = TRUE)
+sample_md <- read.delim("/vast/palmer/pi/verhaak/kcj28/care_mut/data/metadata/clinical_samples_genomic_md_20240608.txt", sep="\t", header = TRUE)
 
 atac_md_mut <- data.frame(getCellColData(CARE_filt_rna_all_filt))
 atac_md_mut_annot <- atac_md_mut %>% 
@@ -183,7 +60,7 @@ CARE_filt_rna_all_filt$Grade <- paste0("G", atac_md_mut_annot$grade_num)
 CARE_filt_rna_all_filt$hypermutation <- atac_md_mut_annot$hypermutation
 CARE_filt_rna_all_filt$subtype_grade <- paste0(CARE_filt_rna_all_filt$idh_codel_subtype, "_", CARE_filt_rna_all_filt$Grade)
 
-# What's the breakdown of sample information:83K (IDH-O) vs 33K (IDH-A)
+# What's the breakdown of sample information:83K (Oligo.) vs 34K (Astro.)
 table(CARE_filt_rna_all_filt$idh_codel_subtype)
 table(CARE_filt_rna_all_filt$sample_barcode, CARE_filt_rna_all_filt$timepoint)
 table(CARE_filt_rna_all_filt$patient_id, CARE_filt_rna_all_filt$timepoint, CARE_filt_rna_all_filt$idh_codel_subtype)
@@ -191,32 +68,42 @@ table(CARE_filt_rna_all_filt$patient_id, CARE_filt_rna_all_filt$timepoint, CARE_
 table(CARE_filt_rna_all_filt$idh_codel_subtype, CARE_filt_rna_all_filt$Grade)
 table(CARE_filt_rna_all_filt$patient_id, CARE_filt_rna_all_filt$Grade)
 table(CARE_filt_rna_all_filt$CellType_final)
+
+# 117,173 cells
+CARE_filt_rna_all_filt <- saveArchRProject(ArchRProj = CARE_filt_rna_all_filt, 
+                 outputDirectory = "Save-CAREmut-All-RNA-Filtered", 
+                 load = TRUE, 
+                 dropCells = TRUE,
+                 overwrite = TRUE) 
+
+
 ############################################################################################################################
 #..........................................................................................................................#
 ############################################################################################################################
 # Assess differential gene activity scores across the different RNA-based cell types.
 #  devtools::install_github('immunogenomics/presto', repos = BiocManager::repositories())
 
-## Define markers based on clusters. There's an average of about 4 clusters per tumor.
+## Define markers based on RNA-cell type assignment.
 markersGS <- getMarkerFeatures(
   ArchRProj = CARE_filt_rna_all_filt, 
   useMatrix = "GeneScoreMatrix", 
   groupBy = "CellType_final",
   bias = c("TSSEnrichment", "log10(nFrags)"),
   testMethod = "wilcoxon",
-  # Note we are increasing the default number of maxCells to 2000 (most cell types have this amount except lymphocytes (only 300), endothelial).
+  # Note we are increasing the default number of maxCells to 2000 (some cell types do not have this ammount: lymphocytes (304), endothelial (1666), mural (19990).
   # We could increase to higher number, but then there is an imbalance with the rarer TME cell types.
   maxCells = 2000,
 )
 
 ## Extract the marker list. These are the default thresholds for ArchR.
-# Throughout this analysis, I will set a cutoff criteria of FDR < 0.05 and Log2FC >= 1. The ArchR tutorial uses variable cut-offs and I could not find a good explanation for why.
+# Throughout this analysis, I set a cutoff criteria of FDR < 0.05 and Log2FC >= 1. The ArchR tutorial uses variable cut-offs and I could not find a good explanation for why.
 markerList <- getMarkers(markersGS, cutOff = "FDR <= 0.05 & Log2FC >= 1")
+saveRDS(markerList, "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/atac/archr_all_celltypes_markerlist.RDS")
 
 # Examine the distribution of differentially accessible genes
 lapply(markerList, nrow)
 markerList$Astrocyte
-markerList$Malignant
+markerList$Malignant # PTPRZ1 and SOX6 towards the top of the list.
 markerList$Oligodendrocyte
 markerList$Mural
 markerList$Endothelial
@@ -225,13 +112,8 @@ markerList$Myeloid
 markerList$InhNeuron
 markerList$ExcNeuron
 
-# RNA marker genes
-markerGenes <- c("PTPRZ1", "SOX6", "GPC5", "SLC1A2", "MBP", "ST18", "RBFOX1", "SYT1", "GAD1", "GRIK1", "ABCB1", "FLT1", "COL1A2", "DCN", "CD74", "DOCK8", "SKAP1", "TOX")
-
-markerGenes <- c("EGFR", "PDGFRA", "PTPRC", "RUNX3", "SNAP25", "GFAP", "AQP4", "SLC1A2", "PTPRZ1", "SOX6", "SOX11", "COL1A2", "VWF", "RBFOX1", "RBFOX3")
-
+# Selected RNA marker genes
 markerGenes <- c("PTPRZ1", "SOX6", "AQP4", "SLC1A2", "MBP", "PLP1", "RBFOX1", "SNAP25", "GAD1", "GAD2", "VWF", "FLT1", "COL1A2", "DCN", "CSF1R", "MSR1", "CD247", "CLEC2D")
-
 
 heatmapGS <- plotMarkerHeatmap(
   seMarker = markersGS, 
@@ -239,16 +121,16 @@ heatmapGS <- plotMarkerHeatmap(
   labelMarkers = markerGenes,
   transpose = FALSE)
 
-ComplexHeatmap::draw(heatmapGS, heatmap_legend_side = "bot", annotation_legend_side = "bot")
+heatmap_out <- ComplexHeatmap::draw(heatmapGS, heatmap_legend_side = "bot", annotation_legend_side = "bot")
 
-plotPDF(heatmapGS, name = "GeneScores-Marker-Heatmap", width = 8, height = 6, ArchRProj = CARE_filt_rna_all_filt, addDOC = FALSE)
+plotPDF(heatmapGS, name = "GeneScores-Marker-Heatmap-All-Cells", width = 5, height = 5, ArchRProj = CARE_filt_rna_all_filt, addDOC = FALSE)
 
-
-pdf(paste0(fig_dir, "caremut_tme_state_atac_marker_genes.pdf"), width = 8, height = 5, useDingbats = FALSE, bg = "transparent")
-heatmapGS
+pdf(paste0(fig_dir, "caremut_tme_state_atac_marker_genes.pdf"), width = 5, height = 5, useDingbats = FALSE, bg = "transparent")
+heatmap_out
 dev.off()
 
-## Code to create a bubble plot from ArchR. Adapted from: https://github.com/NoemieL/bubble-plot-ArchR/blob/main/Script
+## Code to create a bubble plot from ArchR. Adapted from: https://github.com/NoemieL/bubble-plot-ArchR/blob/main/Script.
+# This takes a bit of time to run if done interactively. Can skip as it does not provide a clear visual
 gene_score <- getMatrixFromProject(CARE_filt_rna_all_filt, useMatrix="GeneScoreMatrix")
 dense_matrix <- as.matrix(assay(gene_score))
 gene_score_data <- as.data.frame(dense_matrix)
@@ -267,7 +149,7 @@ for(i in rownames(gen_score_info2)){
 # Genes for which to calculate the average accessibility score across the different cell types
 gene_list <- c("PTPRZ1", "SOX6", "GPC5", "SLC1A2", "MBP", "ST18", "RBFOX1", "SYT1", "GAD1", "GRIK1", "ABCB1", "FLT1", "COL1A2", "DCN", "CD74", "DOCK8", "SKAP1", "TOX")
 
-bubble_plot_info=data.frame()
+bubble_plot_info = data.frame()
 for(i in gene_list){
   for(k in 1:length(unique(gen_score_info2$CellType_final))){
     a=nrow(bubble_plot_info)
@@ -280,7 +162,7 @@ for(i in gene_list){
 }
 
 # Save this information in case the plot needs to be remade/resized:
-saveRDS(bubble_plot_info, file=paste0(fig_dir, "archr_marker_gene_score_accessibility_all_celltypes.RDS"))
+saveRDS(bubble_plot_info, file="/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/atac/archr_marker_gene_score_accessibility_all_celltypes.RDS")
 library(scales)
 library(RColorBrewer)
 
@@ -304,7 +186,13 @@ ggplot(data = bubble_plot_info, mapping = aes_string(x = 'gene_name', y = 'CellT
   theme(axis.text.x=element_text(angle = 45, hjust = 1))
 dev.off()
 
-
+# Clean up these large objects.
+rm(gene_score)
+rm(gene_score_data)
+rm(gen_score_info)
+rm(gen_score_info2)
+rm(dense_matrix)
+gc()
 
 ############################################################################################################################
 #..........................................................................................................................#
@@ -312,7 +200,8 @@ dev.off()
 ## Make pseudo bulk measurements.
 ## There's a known issue with this on HPC systems: https://github.com/GreenleafLab/ArchR/issues/248
 ## Might be solved by setting threads = 1
-# Pseudo-bulk refers to a grouping of single cells where the data from each single cell is combined into a single pseudo-sample
+# Pseudo-bulk refers to a grouping of single cells where the data from each single sample is combined into a single pseudo-sample.
+set.seed(123)
 CARE_filt_rna_all_filt <- addGroupCoverages(ArchRProj = CARE_filt_rna_all_filt, 
                                             groupBy = "CellType_final", 
                                             minCells = 100,
@@ -340,7 +229,7 @@ CARE_filt_rna_all_filt <- addPeakMatrix(CARE_filt_rna_all_filt)
 ############################################################################################################################
 
 ## Identifying marker PEAKS - features that are unique to a specific cell grouping.
-## Tell ArchR to account for biases in data quality via TSSEnrichment and nFrags.
+##  ArchR takes into account for biases in data quality via TSSEnrichment and nFrags.
 markersPeaks <- getMarkerFeatures(
   ArchRProj = CARE_filt_rna_all_filt, 
   useMatrix = "PeakMatrix", 
@@ -353,6 +242,7 @@ markersPeaks <- getMarkerFeatures(
 
 ## Extract the marker peaks. Get access the GRanges object via `returnGR = TRUE`.
 markerList <- getMarkers(markersPeaks, cutOff = "FDR <= 0.05 & Log2FC >= 1")
+# Tens of thousands of peaks for most cell types
 lapply(markerList, nrow)
 
 heatmapPeaks <- plotMarkerHeatmap(
@@ -378,13 +268,17 @@ enrichATAC <- peakAnnoEnrichment(
 )
 
 
-heatmapATAC_df <- plotEnrichHeatmap(enrichATAC, 
+heatmapATAC <- plotEnrichHeatmap(enrichATAC, 
                                  n = 10, 
-                                 transpose = TRUE,
-                                 returnMatrix = TRUE)
-
+                                 transpose = TRUE)
+ComplexHeatmap::draw(heatmapATAC, heatmap_legend_side = "bot", annotation_legend_side = "bot")
 # The number in parentheses appears to be the max -log10(adj P value)
 plotPDF(heatmapATAC, name = "ATAC-Enriched-Marker-Heatmap", width = 8, height = 6, ArchRProj = CARE_filt_rna_all_filt, addDOC = FALSE)
+
+heatmapATAC_df <- plotEnrichHeatmap(enrichATAC, 
+                                    n = 10, 
+                                    transpose = TRUE,
+                                    returnMatrix = TRUE)
 library(viridisLite)
 colnames(heatmapATAC_df) <- sapply(strsplit(colnames(heatmapATAC_df), " "), "[[", 1)
 enrichment_of_interest <- c("Heme_CD8", "Heme_CD4", "IAtlas_T_MemoryTreg", "Heme_Mono", "Brain_Microglia", "IAtlas_Monocyte_Bulk",
@@ -404,7 +298,7 @@ manual_hmap <- ComplexHeatmap::Heatmap(heatmapATAC_df_ordered,
                                          legend_width = unit(5, "cm")
                                          ))
 
-
+# Highly consistent enrichment across expected features for these cell types (malignant = TCGA GBM/LGG, Oligodendrocytes for normal oligodendrocytes etc.)
 pdf(paste0(fig_dir, "all_celltypes_archr_differential_peak_enrichment_public_atac_heatmap.pdf"), width = 5, height = 5, useDingbats = FALSE, bg = "transparent")
 draw(manual_hmap, heatmap_legend_side = "bot", annotation_legend_side = "bot")
 dev.off()
@@ -417,8 +311,7 @@ if("Motif" %ni% names(CARE_filt_rna_all_filt@peakAnnotation)){
   CARE_filt_rna_all_filt <- addMotifAnnotations(ArchRProj = CARE_filt_rna_all_filt, motifSet = "cisbp", name = "Motif")
 }
 
-
-## Performing an enrichment of those SCNA regions.
+# Performing an enrichment of these motifs among the differentially accessible peaks.
 enrichRegions <- peakAnnoEnrichment(
   seMarker = markersPeaks,
   ArchRProj = CARE_filt_rna_all_filt,
@@ -433,15 +326,14 @@ heatmapRegions <- plotEnrichHeatmap(enrichRegions,
 
 plotPDF(heatmapRegions, name = "Regions-Enriched-Marker-Peak-Heatmap", width = 8, height = 6, ArchRProj = CARE_filt_rna_all_filt, addDOC = FALSE)
 
+getAvailableMatrices(CARE_filt_rna_all_filt) # "GeneScoreMatrix" "PeakMatrix" "TileMatrix" 
+names(CARE_filt_rna_all_filt@peakAnnotation) # "ATAC" "Motif"
+
 # Save the project so that the annotations can be more easily accessed in the future. 
-saveArchRProject(ArchRProj = CARE_filt_rna_all_filt, outputDirectory = "Save-CAREmut-All-RNA", load = FALSE, dropCells = FALSE) 
-
-
-############################################################################################################################
-#..........................................................................................................................#
-############################################################################################################################
-# Repeated analyses
-#CARE_filt_rna_all_filt <- loadArchRProject("Save-CAREmut-All-RNA")
-getAvailableMatrices(CARE_filt_rna_all_filt) # GeneScoreMatrix and TileMatrix; 118,268 nuclei
+saveArchRProject(ArchRProj = CARE_filt_rna_all_filt, 
+                 outputDirectory = "Save-CAREmut-All-RNA-Filtered", 
+                 load = FALSE, 
+                 dropCells = FALSE,
+                 overwrite = TRUE) 
 
 ### END ###
