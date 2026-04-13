@@ -5,6 +5,7 @@
 ##################################
 
 library(tidyverse)
+library(EnvStats)
 
 caremut_malignant <- caremut_md %>% 
   filter(CellType=="Malignant")
@@ -43,27 +44,40 @@ mp_public_scores_state_avg <- care_state_md_pmp %>%
   filter(timepoint!="T3") %>% 
   ungroup() %>% 
   arrange(care_id, signatures, cell_state) %>% 
-  filter(cell_counts > 25)
+  filter(cell_counts >= 20)
 
 
-pdf(file = "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/figures/pathway_score_by_state.pdf", height = 5, width = 8, bg = "transparent", useDingbats = FALSE)
+pdf(file = "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/figures/pathway_score_by_state.pdf", height = 2.5, width = 3.5, bg = "transparent", useDingbats = FALSE)
 ggplot(mp_public_scores_state_avg %>% 
          filter(signatures%in%c("PMP10_GlycolysisStress", "PMP1_Mitochrondria")) %>% 
                   mutate(signatures = recode(signatures, `PMP10_GlycolysisStress` = "PMP Glycolysis/Stress",
                                             `PMP1_Mitochrondria` = "PMP Mitochondria energy production")), aes(x=cell_state, y=avg_score, fill=cell_state)) +
   geom_boxplot(outlier.shape = NA) +
-  geom_point() +
+  geom_point(position = position_jitter(width = 0.1, seed = 42), 
+             size = 0.8, alpha = 0.6) +
   facet_wrap(.~signatures, scales="free_y") +
   plot_theme +
   theme(axis.text.x = element_text(angle=45, hjust=1),
-        strip.text = element_text(size=8)) +
+        strip.text = element_text(size=7)) +
   #stat_n_text() +
   stat_compare_means(method="kruskal", label="p.format") +
-  labs(y="Median pathway metaprogram score\nper tumor (min. 25 cells)", x="Malignant state") +
+  labs(y="Median pathway metaprogram score\nper sample (min. 20 cells)", x="Malignant state") +
   scale_fill_manual(values=c("AC-like" = "#AA2756", 
                              "MES-like"="#F77D58",
                              "NPC-like" = "#7fbf7b",
                              "OPC-like"="#E8F5A3",
                              "Undifferentiated" = "gray90")) +
-  guides(fill=FALSE)
+  guides(fill=FALSE) #+
+  #stat_n_text(size = 2.25)
 dev.off()
+
+# Extract the exact p-values
+glyco_stress <- mp_public_scores_state_avg %>% 
+  filter(signatures%in%c("PMP10_GlycolysisStress"))
+kruskal.test(glyco_stress$avg_score~glyco_stress$cell_state)$p.value # 9.67e-42
+
+
+mito_oxphos <- mp_public_scores_state_avg %>% 
+  filter(signatures%in%c("PMP1_Mitochrondria"))
+kruskal.test(mito_oxphos$avg_score~mito_oxphos$cell_state)$p.value #  4.72e-27
+

@@ -77,7 +77,7 @@ intersect_matrix_melt_comb <- intersect_matrix_melt_comb %>%
                              `CGGA IDHmut (n=46)` = "IDHmut scRNA",
                              `Blanco-Carmona IDHmut (n=26)` = "IDHmut snRNA"))
 
-pdf("figures/edf4g_malignant_mp_comparisons.pdf", width = 5, height = 5, useDingbats = FALSE, bg = "transparent")
+pdf("figures/edf4g_malignant_mp_comparisons.pdf", width = 4.25, height = 5, useDingbats = FALSE, bg = "transparent")
 ggplot(data = intersect_matrix_melt_comb, aes(y=Var1, x=Var2, fill=(value/50)*100, color=(value/50)*100)) + 
   geom_tile() + 
   scale_color_gradient2(limits=c(0,100), low=custom_magma[1:111],  mid =custom_magma[112:222], high = custom_magma[223:333], midpoint = 50, oob=squish, name="Similarity %\n(Jaccard index)") +

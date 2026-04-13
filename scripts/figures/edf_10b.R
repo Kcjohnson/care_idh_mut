@@ -1,9 +1,7 @@
 ##################################
 # Purpose: Analyze publicly available longitudinal snRNAseq data for IDH-mutant glioma
 # Author: Kevin Johnson
-# Date: 2026-03-11
-# Input: data/public_snrna_longitudinal_malignant_cell_state_abundance.tsv
-# Output: figures/edf10b_public_longitudinal_mes.pdf
+# Date: 2026.03.11
 ##################################
 
 library(tidyverse) # v1.3.1

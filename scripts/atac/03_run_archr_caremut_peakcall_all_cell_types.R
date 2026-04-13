@@ -6,7 +6,7 @@
 
 ## Part 3: Peak calling on all RNA-defined CELL TYPES across IDH-mutant tumors
 
-## ArchR creates several directories automatically when creating arrow files and ArchR projects.
+# Specify directories
 workdir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/atac/"
 setwd(workdir)
 fig_dir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/figures/archr/"

@@ -352,7 +352,7 @@ heatmapGS <- plotMarkerHeatmap(
   transpose = FALSE,
 )
 
-plotPDF(heatmapGS, name = "GeneScores-Marker-Heatmap", width = 8, height = 6, ArchRProj = CARE_filt_rna_malignant, addDOC = FALSE)
+plotPDF(heatmapGS, name = "GeneScores-Malignant-Marker-Heatmap", width = 5.5, height = 6, ArchRProj = CARE_filt_rna_malignant, addDOC = FALSE)
 
 pdf(paste0(fig_dir, "caremut_malignant_state_marker_genes.pdf"), width = 5, height = 4, useDingbats = FALSE, bg = "transparent")
 heatmapGS
@@ -426,7 +426,7 @@ heatmapPeaks <- plotMarkerHeatmap(
   nLabel = 1
 )
 
-plotPDF(heatmapPeaks, name = "Peak-Marker-Heatmap-mut-malignant-state", width = 8, height = 6, ArchRProj = CARE_filt_rna_malignant, addDOC = FALSE)
+plotPDF(heatmapPeaks, name = "Peak-Marker-Heatmap-mut-malignant-state", width = 5.5, height = 6, ArchRProj = CARE_filt_rna_malignant, addDOC = FALSE)
 
 pdf(paste0(fig_dir, "caremut_malignant_state_marker_peaks.pdf"), width = 6, height = 4, useDingbats = FALSE, bg = "transparent")
 heatmapPeaks
