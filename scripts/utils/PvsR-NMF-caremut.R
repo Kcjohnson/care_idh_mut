@@ -99,8 +99,7 @@ derive_NMF_metaprograms <- function(Genes_nmf_w_basis, n_genes = 50, save_path =
   Min_intersect_initial <- 10    # the minimal intersection cutoff for defining the Founder NMF program of a cluster
   Min_intersect_cluster <- 10    # the minimal intersection cuttof for adding a new NMF to the forming cluster 
   Min_group_size        <- 5     # the minimal group size to consider for defining the Founder_NMF of a MP
-  # Min_group_size        <- 5     # the minimal group size to consider for defining the Founder_NMF of a MP 
-  
+
   Sorted_intersection       <-  sort(apply(nmf_intersect , 2, function(x) (length(which(x>=Min_intersect_initial))-1)  ) , decreasing = TRUE)
   
   Cluster_list <- list()   ### Every entry contains the NMFs of a chosec cluster
@@ -197,8 +196,6 @@ derive_NMF_metaprograms <- function(Genes_nmf_w_basis, n_genes = 50, save_path =
     p <-
       ggplot(data = nmf_intersect_meltI_NEW, aes(x=Var1, y=Var2, fill=100*value/(100-value), color=100*value/(100-value))) + 
       geom_tile() + 
-      # scale_color_gradient2(limits=c(2,25), low="dodgerblue", mid = "grey", high = "red", midpoint = 13.5, oob=squish, name="Similarity\n(Jaccard index)") +
-      # scale_fill_gradient2(limits=c(2,25), low="dodgerblue", mid = "grey", high = "red", midpoint = 13.5, oob=squish, name="Similarity\n(Jaccard index)") +
       scale_color_gradient2(limits=c(2,25), low=custom_magma[1:111],  mid =custom_magma[112:222], high = custom_magma[223:333], midpoint = 13.5, oob=squish, name="Similarity\n(Jaccard index)") +
       scale_fill_gradient2(limits=c(2,25), low=custom_magma[1:111],  mid =custom_magma[112:222], high = custom_magma[223:333], midpoint = 13.5, oob=squish, name="Similarity\n(Jaccard index)")  +
       theme( axis.ticks = element_blank(), panel.border = element_rect(fill=F), panel.background = element_blank(),  axis.line = element_blank(), axis.text = element_text(size = 11), axis.title = element_text(size = 12), legend.title = element_text(size=11), legend.text = element_text(size = 10), legend.text.align = 0.5, legend.justification = "bottom") + 
@@ -225,9 +222,6 @@ derive_NMF_metaprograms <- function(Genes_nmf_w_basis, n_genes = 50, save_path =
     nmf_annot_type_tumor$lab <- meta_care$lab[match(nmf_annot_type_tumor$sample, rownames(meta_care))]
     nmf_annot_type_tumor$lab <- factor(nmf_annot_type_tumor$lab, levels=sort(unique(nmf_annot_type_tumor$lab)))
     
-    # Test purposes - delete later
-    #nmf_intersect <- readRDS("/vast/palmer/pi/verhaak/kcj28/care_mut/results/nmf_res/metaprograms/Malignant/nmf_intersect.RDS")
-    #nmf_annot_type_tumor  <- data.frame("sample"=sub("\\_.*", "", colnames(nmf_intersect)))
     saveRDS(nmf_annot_type_tumor, file = paste0(save_path, "nmf_annot_type_tumor.RDS"))
     
     p_annotation_bottom <- ggplot(nmf_annot_type_tumor, aes(y="", x=1:nrow(nmf_annot_type_tumor), fill=idh_codel_subtype, color=idh_codel_subtype)) +

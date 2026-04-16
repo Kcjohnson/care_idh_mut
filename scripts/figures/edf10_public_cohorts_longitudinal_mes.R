@@ -1,26 +1,34 @@
 ##################################
-# Purpose: Analyze publicly available longitudinal snRNAseq data for IDH-mutant glioma
+# Purpose: Analyze publicly available longitudinal snRNAseq malignant data for IDH-mutant glioma
 # Author: Kevin Johnson
-# Date: 2026.03.11
 ##################################
 
 library(tidyverse) # v1.3.1
 library(ggpubr) # v0.4.0
 library(EnvStats) # v2.7.0
 
-source("utils/plot_theme.R")
-snrna_longitudinal_df <- read.table("data/public_snrna_longitudinal_malignant_cell_state_abundance.tsv", sep = "\t", header = TRUE)
+proj_dir    <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/"
+fig_dir     <- file.path(proj_dir, "figures/")
+setwd(proj_dir)
+
+source(paste0(proj_dir, "scripts/utils/plot_theme.R"))
+
+
+snrna_longitudinal_df <- read.table(paste0(proj_dir, "data/public/public_snrna_longitudinal_malignant_cell_state_abundance.tsv"), sep = "\t", header = TRUE)
 
 # Reformat to feature only the Mesenchymal state and relabel T1/T2.
 snrna_longitudinal_df_plot <- snrna_longitudinal_df %>% 
   filter(State%in%c("MES-like")) %>% 
-  mutate(new_timepoint = recode(timepoint_t1t2, `T1` = "Initial",
+  mutate(new_timepoint = recode(timepoint, `T1` = "Initial",
                                 `T2` = "Recur."))
 
-pdf("figures/edf10b_public_longitudinal_mes.pdf", width = 2.5, height = 2.25, useDingbats = FALSE, bg = "transparent")
-ggplot(snrna_longitudinal_df_plot, aes(x = new_timepoint, y = freq*100)) + 
-  geom_line(aes(group=PatientID), color="gray70", linetype=2) +
+# There are 13 longitudinal samples. 1 sample is an oligodendroglioma. It doesn't really matter whether we remove it in terms of statistical significance.
+# Cleaner for it to be 12 astrocytomas.
+pdf(paste0(fig_dir, "edf10_public_longitudinal_mes.pdf"), width = 2.5, height = 2.25, useDingbats = FALSE, bg = "transparent")
+ggplot(snrna_longitudinal_df_plot %>% 
+         filter(idh_codel_subtype=="Astro."), aes(x = new_timepoint, y = freq*100)) + 
   geom_boxplot(outlier.shape = NA, aes(fill=State)) +
+  geom_line(aes(group=PatientID), color="gray70", linetype=2) +
   geom_point(size = 0.6) +
   scale_linetype_manual(values="dashed") +
   scale_fill_manual(values=c("Cycling" = "#6BAED6", 

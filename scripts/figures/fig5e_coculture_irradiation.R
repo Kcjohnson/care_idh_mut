@@ -1,13 +1,13 @@
 ##################################
 # Visualize MES-like abundance change in monoculture, co-culture experiments following irradiation
 # Author: Kevin Johnson
-# Date Updated: 2026.04.05
 ##################################
 
 library(tidyverse)
 library(RColorBrewer)
 library(ggpubr)
 library(cowplot)
+library(EnvStats)
 
 fig_dir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/figures/"
 out_data_dir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/processed_data/perturbation/coculture/"
@@ -51,9 +51,9 @@ mono_vs_co_plot <- malignant_pval_freq %>%
   filter(State=="MES-like", exp_group%in%c("malignant_only_control", "malignant+macrophage_control")) %>% 
   ggplot(aes(x=plot_id, y=freq*100)) +
   geom_boxplot(aes(fill = factor(State))) +
-  geom_point() +
-  stat_compare_means(method="wilcox", label="p.format") +
-  labs(y = "MES-like cell abundance (%) - no irradiation control", x = "Condition", fill="Cell State") +
+  geom_point(size = 0.5) +
+  stat_compare_means(method="wilcox", label="p.format", size = 2.25) +
+  labs(y = "MES-like cell abundance (%) - no irradiation ctrl", x = "Condition", fill="Cell State") +
   scale_fill_manual(values=c("AC-like" = "#AA2756", 
                              "MES-like"="#F77D58",
                              "NPC-like" = "#7fbf7b",
@@ -61,7 +61,8 @@ mono_vs_co_plot <- malignant_pval_freq %>%
                              "Undifferentiated" = "gray90")) +
   plot_theme +
   theme(axis.text.x = element_text(angle = 45, hjust=1)) +
-  guides(fill=FALSE) 
+  guides(fill=FALSE) +
+  stat_n_text(size = 2.25)
 
 
 # Define a batch controlled pairwise difference in MES-like abundance.
@@ -81,16 +82,17 @@ mes_abundance_diff$plot_id <- factor(mes_abundance_diff$plot_id, levels=c("Malig
 irradiated_control_plot <- ggplot(mes_abundance_diff, aes(x=plot_id, y=mes_irradiated_change*100)) +
   geom_boxplot(aes(fill = factor(State))) +
   scale_fill_manual(values=c("MES-like"="#F77D58")) +
-  geom_point() +
-  stat_compare_means(method = "wilcox", label="p.format") + 
+  geom_point(size = 0.5) +
+  stat_compare_means(method = "wilcox", label="p.format", size = 2.25) + 
   plot_theme +
   labs(x = "Condition", y = "MES-like change (%) after irradiation") +
   guides(fill = FALSE)  +
-  theme(axis.text.x = element_text(angle = 45, hjust=1)) 
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  stat_n_text(size = 2.25)
 
 
 
-pdf(paste0(fig_dir, "fig5e_monoculture_coculture_irradiation.pdf"), width = 4, height = 5, bg = "transparent")
+pdf(paste0(fig_dir, "fig5e_monoculture_coculture_irradiation.pdf"), width = 2.5, height = 2.75, bg = "transparent")
 plot_grid(mono_vs_co_plot, irradiated_control_plot, ncol = 2)
 dev.off()
 
