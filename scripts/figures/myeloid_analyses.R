@@ -225,7 +225,7 @@ myeloid_care_md_summary_wide_mac <- myeloid_care_md_summary_wide %>%
 # Delta Macrophage abundance is approximately normally distributed
 hist(myeloid_care_md_summary_wide_mac$dT)
 
-# Wilcoxon p-value = 0.009 for samples treated with RT versus those that were not.
+# Wilcoxon p-value = 0.006 for samples treated with RT versus those that were not.
 wilcox.test(myeloid_care_md_summary_wide_mac$dT~as.factor(myeloid_care_md_summary_wide_mac$received_rt_t1t2))
 
 # Macrophage-like shift at recurrence
@@ -234,11 +234,11 @@ summary(fit) # RT p-value = 0.003
 fit <- lm(dT ~ grade_change_t1t2 + received_rt_t1t2 + surgical_interval_mo_t1t2 + tumor_type, data = myeloid_care_md_summary_wide_mac)
 summary(fit) # RT p-value = 0.01
 fit <- lm(dT ~ grade_change_t1t2 + received_rt_t1t2 + received_alk_t1t2 + surgical_interval_mo_t1t2 + tumor_type, data = myeloid_care_md_summary_wide_mac)
-summary(fit) # RT p-value = 0.051. RT p-value = 0.04 when alk. NAs were classified as no alk. treatment
+summary(fit) # RT p-value = 0.04
 
 # What's the strength of the relationship between Microglia and Macrophage changes?
 myeloid_care_md_summary_wide_mac$patient_id==myeloid_care_md_summary_wide_mg$patient_id
-cor.test(myeloid_care_md_summary_wide_mac$dT, myeloid_care_md_summary_wide_mg$dT, method="s")
+cor.test(myeloid_care_md_summary_wide_mac$dT, myeloid_care_md_summary_wide_mg$dT, method="p")
 
 ### ### ### ### ### ### ###
 # Miller et al program annotation
@@ -300,10 +300,10 @@ md_all_plus_malignant <- md %>%
                                  `MP_AC2_MUT` = "AC-like",
                                  "Undifferentiated" = "Undifferentiated")) %>% 
   left_join(myeloid_md_trim, by=c("CellID")) %>% 
-  mutate(myeloid_state = recode(myeloid_state_collapsed, `Unresolved` = "TAM Unresolved",
-                                `Inflammatory` = "TAM Inflammatory",
-                                `Macrophage` = "TAM Macrophage",
-                                `Microglia` = "TAM Microglia"))
+  mutate(myeloid_state = recode(myeloid_state_collapsed, `Unresolved` = "Unresolved Myeloid",
+                                `Inflammatory` = "Infl. Myeloid",
+                                `Macrophage` = "Macrophage",
+                                `Microglia` = "Microglia"))
 
 # Redfine CellType variable so that it accounts for Malignant and Myeloid sub-compartments
 md_all_plus_malignant$CellTypeRefined <- md_all_plus_malignant$CellType_final
@@ -411,12 +411,15 @@ state_freq_adj <- care_md_summary_mal %>%
   dplyr::select(care_id, CellTypeRefined, freq) %>% 
   pivot_wider(names_from = CellTypeRefined, values_from = freq)
 
+dim(state_freq_adj)[1]
+
 # Create variables to be able to pivot. These represent the delta (T2-T1) values per cell type
 state_freq_adj_t1t2 <- state_freq_adj %>% 
   mutate(patient_id = sapply(strsplit(care_id, "T"), "[[", 1),
          timepoint = paste0("T", sapply(strsplit(care_id, "T"), "[[", 2))) %>% 
   dplyr::select(-care_id) %>% 
-  pivot_longer(cols= c(`AC-like`:`TAM Unresolved`),
+  # Important: how the cell states are renamed above is important for the pivot
+  pivot_longer(cols= c(`AC-like`:`Unresolved Myeloid`),
                names_to = "cell_type",
                values_to = "freq") %>% 
   pivot_wider(names_from = timepoint, values_from = freq) %>% 
@@ -424,8 +427,8 @@ state_freq_adj_t1t2 <- state_freq_adj %>%
   dplyr::select(-c(T1, T2)) %>% 
   pivot_wider(names_from = cell_type, values_from = delta_freq) 
 
-# Pearson correlation coefficient 0.57 and P = 0.0004
-ggplot(state_freq_adj_t1t2, aes(x = `TAM Macrophage`, y= `MES-like`)) +
+# Pearson correlation coefficient 0.56 and P = 0.00055
+ggplot(state_freq_adj_t1t2, aes(x = `Macrophage`, y= `MES-like`)) +
   geom_point() +
   stat_cor(method="pearson")
 
@@ -438,8 +441,9 @@ state_freq_adj_t1t2_cor_input <- as.data.frame(state_freq_adj_t1t2_cor[1:5, 6:16
 state_freq_adj_t1t2_cor_input$malignant_state <- rownames(state_freq_adj_t1t2_cor_input)
 
 # Converting to long format so that we can merge downstream.
-state_freq_adj_t1t2_cor_input_long <- state_freq_adj_t1t2_cor_input %>% 
-  pivot_longer(cols = c(Astrocyte:`TAM Unresolved`), names_to = "tme_state", values_to = "pearson_cor") %>% 
+state_freq_adj_t1t2_cor_input_long <- state_freq_adj_t1t2_cor_input %>%
+  # Important: how the cell states are renamed above is important for the pivot
+  pivot_longer(cols = c(Astrocyte:`Unresolved Myeloid`), names_to = "tme_state", values_to = "pearson_cor") %>% 
   mutate(comparison = paste0(malignant_state, "_", tme_state))
 
 # Calculate the p-values for each correlation
@@ -451,7 +455,7 @@ state_freq_adj_t1t2_pvalue_input <- as.data.frame(state_freq_adj_cor_t1t2_pval_d
 state_freq_adj_t1t2_pvalue_input$malignant_state <- rownames(state_freq_adj_t1t2_pvalue_input)
 
 state_freq_adj_t1t2_pvalue_input_long <- state_freq_adj_t1t2_pvalue_input %>% 
-  pivot_longer(cols = c(Astrocyte:`TAM Unresolved`), names_to = "tme_state", values_to = "pearson_pval") %>% 
+  pivot_longer(cols = c(Astrocyte:`Unresolved Myeloid`), names_to = "tme_state", values_to = "pearson_pval") %>% 
   mutate(comparison = paste0(malignant_state, "_", tme_state)) %>% 
   mutate(adj_pval = p.adjust(pearson_pval,  method = "fdr")) %>% 
   inner_join(state_freq_adj_t1t2_cor_input_long, by=c("comparison", "malignant_state", "tme_state"))
@@ -469,10 +473,10 @@ tme_order <- c("Astrocyte",
                "Endothelial",
                "Mural",
                "Lymphocyte",
-               "TAM Macrophage",
-               "TAM Inflammatory",
-               "TAM Microglia",
-               "TAM Unresolved")
+               "Macrophage",
+               "Infl. Myeloid",
+               "Microglia",
+               "Unresolved Myeloid")
 
 state_freq_adj_t1t2_pvalue_input_long$malignant_state <- factor(state_freq_adj_t1t2_pvalue_input_long$malignant_state, levels=mal_order)
 state_freq_adj_t1t2_pvalue_input_long$tme_state <- factor(state_freq_adj_t1t2_pvalue_input_long$tme_state, levels=tme_order)
@@ -483,19 +487,23 @@ ggplot(data = state_freq_adj_t1t2_pvalue_input_long, aes(x=tme_state, y=malignan
   scale_fill_gradient2(low = "dodgerblue", high = "#FF0000", mid = "white", 
                        midpoint = 0, limit = c(-0.8,0.8), oob = scales::squish, space = "Lab",
                        name="Pearson's corr. coeff.") +
-  guides(fill = guide_colourbar(barheight = 1, barwidth = 3.25)) +
+  guides(fill = guide_colourbar(barheight = 1, barwidth = 3.5)) +
   labs(x= "Tumor microenvironment cell type", y = "Malignant state") +
   plot_theme +
-  theme(legend.position = "top",
+  theme(legend.position = "bottom",
         axis.text.x = element_text(angle=45, hjust=1),
         plot.title = element_text(size = 8)) +
   geom_text(data = filter(state_freq_adj_t1t2_pvalue_input_long, adj_pval<0.05), aes(x = 8, y = 2), label = "*")
 dev.off()
 
+# Extract the p-value and correlation coefficient
+state_freq_adj_t1t2_pvalue_input_long %>% 
+  filter(malignant_state=="MES-like", tme_state=="Macrophage")
 
 ### ### ### ### ### ### ### ###
 # Organoid myeloid cell program usage
 ### ### ### ### ### ### ### ###
+# Apply the Miller et al classification, which was designed for single cell RNA data using the publication's shiny tool
 organoid_myeloid_program <- read.table(paste0(proj_dir, "data/snrna/organoid_myeloid_miller_cell_classification.tsv"), sep = "\t",  header = TRUE)
 organoid_myeloid_program$grade <- gsub("Grade ", "G", organoid_myeloid_program$Grade) 
 
@@ -628,3 +636,6 @@ pdf(paste0(fig_dir, "myeloid_longitudinal_abundance_waterfall.pdf"), width = 3.7
 grid.newpage()
 grid.draw(p)
 dev.off()
+
+
+### END ###

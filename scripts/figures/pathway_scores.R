@@ -1,27 +1,26 @@
 ##################################
 # Create a visualization for pathway-based metaprogram scores across malignant cell states.
 # Author: Kevin Johnson
-# Date Updated: 2026.04.06
 ##################################
 
 library(tidyverse)
 library(EnvStats)
+library(ggpubr)
 
-caremut_malignant <- caremut_md %>% 
-  filter(CellType=="Malignant")
+proj_dir    <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut"
+source(paste0(proj_dir, "/scripts/utils/plot_theme.R"))
 
-cell_ids <- rownames(scores)
+setwd(proj_dir)
 
-caremut_malignant_new <- caremut_malignant %>% 
-  anti_join(scores, by = )
+# Load the pathway-based metaprogram scores calculated by Luciano Garofano according to the approach detailed in previous CARE paper (Nomura et al Nature Genetics 2025)
+load("data/snrna/caremut_10x_tumor_scores_pmp.RData")
 
-load("/vast/palmer/pi/verhaak/kcj28/care_mut/data/pmp/CARE_IDHmut_10x_Tumor_scores_PMP_240903_10_10_10.RData")
+# Add functional names to PMPs
 pmp_scores <- scores
 colnames(pmp_scores)[2:12] <- c("PMP1_Mitochrondria", "PMP2_Chromatin", "PMP3_AC", "PMP4_NEU", "PMP5_Morphogenesis", "PMP6_CellCycle", "PMP7_CalciumSignaling", "PMP8_AC_Cilia", "PMP9_Immune", "PMP10_GlycolysisStress", "PMP11_Angiogenesis")
 
 
-
-
+# Gene-based metaprogram cell state assignment
 care_state_md <- read.delim("/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/scoring/caremut_malignant_cell_state_assignment.txt", sep="\t", header = TRUE)
 
 care_state_md_pmp <- care_state_md %>% 
@@ -33,6 +32,7 @@ care_state_md_pmp <- care_state_md %>%
                       `MP_AC2_MUT` = "AC-like",
                       "Undifferentiated" = "Undifferentiated")) 
 
+# Calculate the median score per state per sample
 mp_public_scores_state_avg <- care_state_md_pmp %>% 
   dplyr::select(CellID, care_id, cell_state, PMP1_Mitochrondria:PMP11_Angiogenesis) %>% 
   pivot_longer(cols = c(PMP1_Mitochrondria:PMP11_Angiogenesis), names_to = "signatures", values_to = "scores") %>% 
@@ -71,13 +71,35 @@ ggplot(mp_public_scores_state_avg %>%
   #stat_n_text(size = 2.25)
 dev.off()
 
+ggplot(mp_public_scores_state_avg %>% 
+         filter(signatures%in%c("PMP10_GlycolysisStress", "PMP1_Mitochrondria")) %>% 
+         mutate(signatures = recode(signatures, `PMP10_GlycolysisStress` = "PMP Glycolysis/Stress",
+                                    `PMP1_Mitochrondria` = "PMP Mitochondria energy production")), aes(x=cell_state, y=avg_score, fill=cell_state)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point(position = position_jitter(width = 0.1, seed = 42), 
+             size = 0.8, alpha = 0.6) +
+  facet_wrap(.~signatures, scales="free_y") +
+  plot_theme +
+  theme(axis.text.x = element_text(angle=45, hjust=1),
+        strip.text = element_text(size=7)) +
+  #stat_n_text() +
+  stat_compare_means(method="kruskal", label="p.format") +
+  labs(y="Median pathway metaprogram score\nper sample (min. 20 cells)", x="Malignant state") +
+  scale_fill_manual(values=c("AC-like" = "#AA2756", 
+                             "MES-like"="#F77D58",
+                             "NPC-like" = "#7fbf7b",
+                             "OPC-like"="#E8F5A3",
+                             "Undifferentiated" = "gray90")) +
+  guides(fill=FALSE) +
+stat_n_text(size = 2.25)
+
 # Extract the exact p-values
 glyco_stress <- mp_public_scores_state_avg %>% 
   filter(signatures%in%c("PMP10_GlycolysisStress"))
-kruskal.test(glyco_stress$avg_score~glyco_stress$cell_state)$p.value # 9.67e-42
+kruskal.test(glyco_stress$avg_score~glyco_stress$cell_state)$p.value # 9.214601e-43
 
 
 mito_oxphos <- mp_public_scores_state_avg %>% 
   filter(signatures%in%c("PMP1_Mitochrondria"))
-kruskal.test(mito_oxphos$avg_score~mito_oxphos$cell_state)$p.value #  4.72e-27
+kruskal.test(mito_oxphos$avg_score~mito_oxphos$cell_state)$p.value #  3.194162e-28
 

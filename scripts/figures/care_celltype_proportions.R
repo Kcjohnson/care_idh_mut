@@ -1,7 +1,6 @@
 ##################################
 # Visualize the cell type abundance frequency across tumor types and time points
 # Author: Kevin Johnson
-# Date Updated: 2026.03.30
 ##################################
 
 library(tidyverse)
@@ -11,7 +10,7 @@ library(ggpubr)
 library(EnvStats)
 
 proj_dir    <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut"
-fig_dir     <- file.path(proj_dir, "results/figures/rna/proportions/")
+fig_dir     <- file.path(proj_dir, "figures/")
 setwd(proj_dir)
 
 source("/vast/palmer/pi/verhaak/kcj28/care_idh_mut/scripts/utils/plot_theme.R")
@@ -146,23 +145,24 @@ ggplot(care_md_summary %>%
   plot_theme 
 
 
-pdf(paste0(fig_dir, "caremut_cell_composition_paired_t1t2.pdf"), width = 6, height = 4, useDingbats = FALSE)
+pdf(paste0(fig_dir, "caremut_cell_composition_paired_t1t2.pdf"), width = 5, height = 3, useDingbats = FALSE)
 ggplot(care_md_summary %>% 
          filter(timepoint!="T3") %>% 
          mutate(timepoint = recode(timepoint, "T1" = "I",
                                    "T2" = "R")), aes(x = timepoint, y = freq*100)) + 
-  geom_line(aes(group=patient_id), color="gray70", linetype=2) +
-  geom_boxplot(aes(fill=CellType)) +
+  geom_boxplot(aes(fill=CellType), outlier.shape = NA) +
+  geom_line(aes(group=patient_id), color="gray70", linetype=2, size = 0.5) +
+  geom_point(size = 0.5) +
   scale_linetype_manual(values="dashed") +
   theme(legend.position = "none") +
-  stat_compare_means(method = "wilcox", paired = TRUE, size = 4, label="p.format") +
+  stat_compare_means(method = "wilcox", paired = TRUE, size = 2.25, label="p.format") +
   labs(x="Longitudinal IDHmut pairs", y="Cell abundance (%)") +
   scale_fill_manual(values=c("Malignant" = "#FB8072", "Oligodendrocyte" = "#B3DE69", "Myeloid" = "#80B1D3", 
                              "Astrocyte" = "#BFBADA", "ExcNeuron" = "#BC80BD", 
                              "InhNeuron" = "#FFED6F", "Endothelial" = "#FCCDE5", "Mural" = "#FFFFB3", "Lymphocyte" = "#8DD3C7")) +
   theme(strip.background = element_blank()) +
-  facet_grid(idh_codel_subtype~CellType, scales="free") +
-  stat_n_text() +
+  facet_grid(.~CellType, scales="free") +
+  stat_n_text(size = 2.25) +
   plot_theme 
 dev.off()
 
@@ -173,42 +173,106 @@ care_md_summary_avg <- care_md_summary %>%
   filter(timepoint!="T3") %>%
   group_by(timepoint, idh_codel_subtype, CellType) %>% 
   summarise(avg_freq = mean(freq)) %>% 
-  mutate(timepoint = recode(timepoint, "T1" = "I",
-                            "T2" = "R"),
+  mutate(timepoint = recode(timepoint, "T1" = "Init.",
+                            "T2" = "Recur"),
          subtype = recode(idh_codel_subtype, "IDH-O" = "Oligo.",
                           "IDH-A" = "Astro."))
 
 care_md_summary_avg$subtype <- factor(care_md_summary_avg$subtype, levels=rev(c("Astro.","Oligo.")))
 
-pdf(paste0(fig_dir, "caremut_celltype_stacked_barplot.pdf"), width = 5, height = 4, useDingbats = FALSE, bg="transparent")
+pdf(paste0(fig_dir, "caremut_celltype_stacked_barplot.pdf"), width = 3.5, height = 2.75, useDingbats = FALSE, bg="transparent")
 ggplot(care_md_summary_avg, aes(x=timepoint, fill = factor(CellType), y=avg_freq*100)) +
   geom_bar(position = "stack", stat = "identity") +
   scale_fill_manual(values=c("Malignant" = "#FB8072", "Oligodendrocyte" = "#B3DE69", "Myeloid" = "#80B1D3", 
                              "Astrocyte" = "#BFBADA", "ExcNeuron" = "#BC80BD", 
                              "InhNeuron" = "#FFED6F", "Endothelial" = "#FCCDE5", "Mural" = "#FFFFB3", "Lymphocyte" = "#8DD3C7")) +
   facet_grid(.~subtype, scales="free") +
-  labs(x = "Time point", y="Mean cellular abundance (%)", fill="Cell type") +
-  plot_theme
+  labs(x = "Time point", y="Mean cell abundance (%)", fill="Cell type") +
+  plot_theme +
+  theme(
+    legend.text      = element_text(size = 7),
+    legend.title     = element_text(size = 7),
+    legend.key.size  = unit(0.4, "cm")
+  )
 dev.off()
 
 # Compare T1+T2 cell type abundance so that each patient only has two samples.
 # Statistically significant cell types include: Mural (higher in oligodendrogliomas) and Myeloid (higher in astrocytomas)
 # Borderline statistical significance includes: Oligodendrocytes (P = 0.054) and Endothelial (P = 0.085) both higher in oligodendrogliomas
+pdf(paste0(fig_dir, "celltype_tumor_type_comparisons.pdf"), width = 5, height = 3, useDingbats = FALSE, bg="transparent")
 ggplot(care_md_summary %>% 
-         filter(timepoint!="T3"), aes(x = idh_codel_subtype, y = freq)) + 
-  geom_boxplot(aes(fill=CellType)) +
-  theme_bw() +
+         filter(timepoint!="T3"), aes(x = idh_codel_subtype, y = freq*100)) + 
+  geom_boxplot(aes(fill=CellType), outlier.shape = NA) +
+  geom_point(size = 0.5) +
   theme(legend.position = "none") +
-  stat_compare_means(method = "wilcox", size =2) +
-  labs(x="IDHmut subtype comparisons", y="Cell proportion") +
+  stat_compare_means(method = "wilcox", size = 2.25, label = "p.format") +
+  labs(x="Tumor type", y="Cell abundance (%)") +
   scale_fill_manual(values=c("Malignant" = "#FB8072", "Oligodendrocyte" = "#B3DE69", "Myeloid" = "#80B1D3", 
                              "Astrocyte" = "#BFBADA", "ExcNeuron" = "#BC80BD", 
                              "InhNeuron" = "#FFED6F", "Endothelial" = "#FCCDE5", "Mural" = "#FFFFB3", "Lymphocyte" = "#8DD3C7")) +
   theme(strip.background = element_blank()) +
   facet_grid(.~CellType, scales="free") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  stat_n_text() + 
+  stat_n_text(size = 2.25) + 
   plot_theme
+dev.off()
 
+### ### ### ### ### ### ### ### ###
+# Collapse similar cell types 
+### ### ### ### ### ### ### ### ###
+# Summarize the frequency of each CellType across samples
+care_md_summary_collapsed <- caremut_md %>% 
+  mutate(CellType = recode(CellType, `Mural` = "MuralEndothelial",
+                           `Endothelial` = "MuralEndothelial",
+                           `ExcNeuron` = "Neuron",
+                           `InhNeuron` = "Neuron")) %>% 
+  group_by(SampleID, CellType) %>% 
+  summarise(counts = n()) %>% 
+  mutate(freq = counts / sum(counts)) %>% 
+  ungroup() %>% 
+  dplyr::select(SampleID, CellType, counts, freq) %>% 
+  complete(SampleID, CellType,
+           fill = list(counts = 0, freq = 0)) %>%
+  distinct() %>% 
+  inner_join(caremut_md_case, by="SampleID") %>% 
+  inner_join(patient_md, by=c("patient_id", "idh_codel_subtype")) %>% 
+  left_join(sample_md, by=c("sample_barcode", "case_barcode", "idh_codel_subtype", "patient_id", "timepoint", "care_id")) %>% 
+  mutate(idh_codel_subtype = recode(idh_codel_subtype, `IDHmut-codel` = "Oligo.",
+                                    `IDHmut-noncodel` = "Astro."))
+
+
+# Confirm that all sample sum 1 and that all cell types are measured.
+care_md_summary_collapsed %>%
+  group_by(SampleID) %>%
+  summarise(freq_sum = sum(freq)) %>%
+  mutate(pass = abs(freq_sum - 1) < 1e-10) %>%
+  { if (all(.$pass)) {
+    message("PASS: All samples frequencies sum to 1")
+  } else {
+    failing <- filter(., !pass)
+    message("FAIL: ", nrow(failing), " samples do not sum to 1:")
+    print(failing)
+  }
+  }
+
+care_md_summary_collapsed$idh_codel_subtype <- factor(care_md_summary_collapsed$idh_codel_subtype, levels=rev(c("Astro.","Oligo.")))
+
+pdf(paste0(fig_dir, "caremut_celltype_stacked_collapsed.pdf"), width = 4, height = 3, useDingbats = FALSE, bg="transparent")
+ggplot(care_md_summary_collapsed %>% 
+         filter(timepoint!="T3", CellType%in%c("MuralEndothelial", "Neuron", "Oligodendrocyte", "Myeloid")), aes(x = idh_codel_subtype, y = freq*100)) + 
+  geom_boxplot(aes(fill=CellType), outlier.shape = NA) +
+  geom_point(size = 0.5) +
+  theme(legend.position = "none") +
+  stat_compare_means(method = "wilcox", size = 2.25, label = "p.format") +
+  labs(x="Tumor type", y="Cell abundance (%)") +
+  scale_fill_manual(values=c("Malignant" = "#FB8072", "Oligodendrocyte" = "#B3DE69", "Myeloid" = "#80B1D3", 
+                             "Astrocyte" = "#BFBADA", "Neuron" = "#BC80BD", 
+                             "InhNeuron" = "#FFED6F", "MuralEndothelial" = "#FCCDE5", "Mural" = "#FFFFB3", "Lymphocyte" = "#8DD3C7")) +
+  theme(strip.background = element_blank()) +
+  facet_grid(.~CellType, scales="free") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  stat_n_text(size = 2.25) + 
+  plot_theme
+dev.off()
 
 ### END ###

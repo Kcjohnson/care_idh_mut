@@ -1,7 +1,6 @@
 ##################################
 # Assign malignant cells to CARE IDHmut metaprogram/state based on metaprogram scoring and p-value 
 # Author: Kevin Johnson
-# Date Updated: 2026.04.02
 ##################################
 
 library(tidyverse)

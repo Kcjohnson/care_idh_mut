@@ -1,7 +1,6 @@
 ##################################
 # 10x scRNA processing of MGG152 IDH-mutant gliomaspheres with CRISPR targeting CDKN2A from the Suva/Cahill labs
 # Author: Kevin Johnson
-# Date Updated: 2026.04.06
 ##################################
 
 library(tidyverse) # 1.3.1 
@@ -252,6 +251,7 @@ dev.off()
 ##### Preprocess with standard processing  
 #########################################################################################
 # Run through a standard Seurat workflow
+set.seed(1)
 cdkn2a_sobj_all <- NormalizeData(seurat_obj_singlets, normalization.method = "LogNormalize", scale.factor = 10000)
 cdkn2a_sobj_all <- FindVariableFeatures(cdkn2a_sobj_all, selection.method = "vst", nfeatures = 5000)
 # By default only variable features are scaled
@@ -277,11 +277,18 @@ png(paste0(fig_dir, "cdkn2a_standard_preprocessing_sample_id.png"), width=10, he
 DimPlot(cdkn2a_sobj_all, label = TRUE, group.by = "exp_id", repel = TRUE)
 dev.off()
 
-umap_plot <- DimPlot(cdkn2a_sobj_all, label = TRUE, group.by = "exp_id", repel = TRUE, label.size = 3) +
+umap_plot <- DimPlot(cdkn2a_sobj_all, label = FALSE, group.by = "exp_id", pt.size = 0.1) +
   labs(title = "Conditions (n = 17K cells)") + 
+  scale_color_manual(values = c(
+    "Parental" = "gray80",
+    "sgNTC"    = "gray10",
+    "sgRNA1"   = "#1F78B4",   # your original blue (darker)
+    "sgRNA3"   = "#A6CBE3"    # lighter shade of the same blue
+  )) +
   plot_theme
 
-ggsave(paste0(fig_dir, "cdkn2a_standard_preprocessing_sample_id.pdf"), umap_plot, width = 4, height = 3, dpi = 300)
+ggsave(paste0(fig_dir, "cdkn2a_standard_preprocessing_sample_id.pdf"), umap_plot, width = 2.75, height = 2.75, dpi = 300)
+ggsave(paste0(fig_dir, "cdkn2a_standard_preprocessing_sample_id.png"), umap_plot, width = 2.75, height = 2.75, dpi = 300)
 
 # Inspect the plot to see how the key features are distributed.
 FeaturePlot(cdkn2a_sobj_all, features = c("CDKN2A",  "TOP2A",  "percent.mt", "nFeature_RNA"))

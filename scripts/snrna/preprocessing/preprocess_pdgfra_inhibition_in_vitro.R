@@ -439,7 +439,7 @@ venteicher_sig_list <- as.list(venteicher_signatures[1:50,1:3])
 venteicher_sig_list <- lapply(venteicher_sig_list, function(x) x[!is.na(x)])
 
 ######### Tirosh IDH-O    #########
-tirosh <- readWorkbook("//vast/palmer/pi/verhaak/kcj28/care_idh_mut/data/misc/tirosh_nature_2016_supplementary_table_1.xlsx", startRow = 9, colNames = TRUE)
+tirosh <- readWorkbook("/vast/palmer/pi/verhaak/kcj28/care_idh_mut/data/misc/tirosh_nature_2016_supplementary_table_1.xlsx", startRow = 9, colNames = TRUE)
 tirosh_signatures <- tirosh %>% 
   dplyr::select("Tirosh_OC_scRNA"=`OC.(PCA-only)`,
                 "Tirosh_AC_scRNA"=`AC.(PCA-only)`,
@@ -517,10 +517,6 @@ permuted_data <- generate_null_dist(umi_data_list = umi_data_all,
 # Save output of the permuted data
 saveRDS(permuted_data, paste0(out_data_dir, "pdgfrai_class_permuted_data_20260406.RDS"))
 # permuted_data <- readRDS( paste0(out_data_dir, "pdgfrai_class_permuted_data_20260406.RDS"))
-
-# Previous run
-permuted_data_prior <- readRDS("/vast/palmer/pi/verhaak/kcj28/care_mut/processed_data/perturbation/pdgfrai/pdgfrai_class_permuted_data_20260406.RDS")
-identical(permuted_data, permuted_data_prior)
 
 # The signatures are the cell state programs
 state_programs <- sigs

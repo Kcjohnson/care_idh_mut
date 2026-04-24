@@ -1,7 +1,6 @@
 ##################################
 # Plot the genomic data availability across the cohort
 # Author: Kevin Johnson
-# Date Updated: 2026.03.30
 ##################################
 
 library(tidyverse)
@@ -14,6 +13,9 @@ setwd(proj_dir)
 # Curated data availability for CARE IDH-mutant cohort.
 all_samples <- read.table("data/misc/genomic_data_availability_all.csv", sep = ",", header = TRUE)
 
+# Needed to remove the WGS data from SJ-0004 due to matched normal for the WGS not working (tumor samples did match WXS)
+all_samples$available[all_samples$sample_barcode=="OLIG-SJ-0004-R1" & all_samples$data_type=="Whole genome DNA"] <- "no"
+all_samples$available[all_samples$sample_barcode=="OLIG-SJ-0004-R2" & all_samples$data_type=="Whole genome DNA"] <- "no"
 
 
 # Re-level and reformat the data.
@@ -31,7 +33,7 @@ samples_annotated_plot$available_plot <- factor(samples_annotated_plot$available
 
 
 # Landscape of all samples
-pdf(file = paste0(fig_dir, "/edf1a_sample_annotation.pdf"), height = 5, width = 9, useDingbats = FALSE)
+pdf(file = paste0(fig_dir, "/edf1a_sample_annotation.pdf"), height = 4, width = 8, useDingbats = FALSE)
 ggplot(samples_annotated_plot, aes(x=care_id, y=data_type)) +
   geom_tile(aes(fill = factor(available_plot))) +
   scale_fill_manual(values = c("Not avail." = "gray90", "Single nucleus data avail." = "#8da0cb",
@@ -41,7 +43,7 @@ ggplot(samples_annotated_plot, aes(x=care_id, y=data_type)) +
   theme(
     panel.spacing = unit(0.15, "lines"),
     strip.text.x = element_blank(),
-    axis.text.x = element_text(angle = 90, hjust = 1, size = 7),
+    axis.text.x = element_text(angle = 90, hjust = 1, size = 5),
     legend.position = "bottom") +
   labs(y="Genomic profile", x="CARE IDHmut (n=75 samples)", fill="Data availability") +
   facet_grid(single_bulk~patient_id, scales="free", space="free") 
@@ -72,7 +74,7 @@ longitudinal_counts <- rbind(longitudinal_counts, new_row)
 longitudinal_counts$single_bulk <- ifelse(longitudinal_counts$data_type%in%c("10x snRNA", "snATAC via 10x Multiome", "SmartSeq2 snRNA"), "Single nucleus", "Bulk")
 longitudinal_counts$single_bulk <- factor(longitudinal_counts$single_bulk, levels = c("Single nucleus", "Bulk"))
 
-pdf(file = paste0(fig_dir, "/edf1c_longitudinal_patient_data_availability.pdf"), height = 4, width = 4, useDingbats = FALSE)
+pdf(file = paste0(fig_dir, "/edf1c_longitudinal_patient_data_availability.pdf"), height = 3, width = 3.5, useDingbats = FALSE)
 ggplot(longitudinal_counts, aes(x =reorder(data_type, -n_patients_longitudinal), 
                                 y = n_patients_longitudinal)) +
   geom_bar(stat = "identity", aes(fill=single_bulk)) +
@@ -83,7 +85,7 @@ ggplot(longitudinal_counts, aes(x =reorder(data_type, -n_patients_longitudinal),
   plot_theme +
   facet_grid(.~single_bulk, scales="free", space="free") +
   scale_y_continuous(breaks = seq(0, max(longitudinal_counts$n_patients_longitudinal), by = 5)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6)) +
   guides(fill=FALSE)
 dev.off()
 
@@ -96,7 +98,7 @@ all_counts <- all_samples %>%
 all_counts$single_bulk <- ifelse(all_counts$data_type%in%c("10x snRNA", "snATAC via 10x Multiome", "SmartSeq2 snRNA"), "Single nucleus", "Bulk")
 all_counts$single_bulk <- factor(all_counts$single_bulk, levels = c("Single nucleus", "Bulk"))
 
-pdf(file = paste0(fig_dir, "/edf1b_all_sample_data_availability.pdf"), height = 4, width = 4, useDingbats = FALSE)
+pdf(file = paste0(fig_dir, "/edf1b_all_sample_data_availability.pdf"), height = 3, width = 3.5, useDingbats = FALSE)
 ggplot(all_counts, aes(x =reorder(data_type, -counts), 
                        y = counts)) +
   geom_bar(stat = "identity", aes(fill=single_bulk)) +
@@ -106,7 +108,7 @@ ggplot(all_counts, aes(x =reorder(data_type, -counts),
        y = "Number of samples with\ndata generated") +
   plot_theme +
   facet_grid(.~single_bulk, scales="free", space="free") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6)) +
   scale_y_continuous(breaks = seq(0, max(all_counts$counts), by = 15)) +
   guides(fill=FALSE)
 dev.off()

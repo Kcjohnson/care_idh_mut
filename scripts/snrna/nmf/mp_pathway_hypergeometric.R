@@ -1,7 +1,6 @@
 ##################################
 # Test for enrichment of published gene sets among the 50 MP malignant genes
 # Author: Kevin Johnson
-# Date Updated: 2026.04.01
 ##################################
 
 library(tidyverse)
@@ -17,6 +16,7 @@ script_dir  <- file.path(proj_dir, "scripts")
 setwd(proj_dir)
 
 source(paste0(script_dir, "/utils/metaprograms_enrichment.R"))
+source(paste0(script_dir, "/utils/plot_theme.R"))
 
 # Load in metaprograms and relevant gene sets from prior publications:
 
@@ -96,7 +96,6 @@ msigdb_genesets <- split(m_df_long$human_gene_symbol, m_df_long$gs_name)
 all_signatures <- c(gavish_signatures, astrocyte_list, msigdb_genesets, liu_markers_list, tirosh_signatures_list, venteicher_sig_list, care_wt_mps)
 
 # The background set from which genes could be selected for metaprogram enrichment.
-# total_gene_set <- readRDS("data/misc/snrna_genes_in_seurat_obj.RDS")
 total_gene_set <- readRDS("data/snrna/unique_genes_across_malignant_nmf_input_matrices.RDS")
 
 res <- metaprograms_enrichment(mut_mp_list, pathways = all_signatures)
@@ -113,7 +112,7 @@ top_5_p_values <- res %>%
   top_n(5, -`p.adj`) %>% 
   filter(p.adj<0.05)
 
-# Check a few interesting overlap sets
+# Inspect a few overlapping gene sets
 res$int_genes[res$MP=="MP_8"&res$Pathway=="CARE_IDHwt_MP8_GPC"]
 res$int_genes[res$MP=="MP_5"&res$Pathway=="CARE_IDHwt_MP6_MES"]
 
@@ -155,8 +154,7 @@ y_labels_to_display <- c("Liu2023_Pre.OPC", "Tirosh2016_OC", "CARE_IDHwt_MP2_OPC
                          "CARE_IDHwt_MP10_Stress1")
 
 
-
-pdf(paste0(fig_dir, "edf4d_malignant_hypergeometric_gene_overlap_enrichment.pdf"), width = 6, height = 4.5)
+# Unadjusted p-value
 ggplot(res_plot, aes(x = MP, y = Pathway, fill = -log10(hyper_value))) +
   geom_tile() +
   scale_fill_viridis(limits=c(0,20), option = "D", oob=squish, name="Significance\n-log10(p-value)") +
@@ -167,7 +165,24 @@ ggplot(res_plot, aes(x = MP, y = Pathway, fill = -log10(hyper_value))) +
   scale_y_discrete(breaks = y_labels_to_display) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, 
                                    size = 8, hjust = 1), text=element_text(size=8))
-dev.off()
 
+# FDR-adjusted p-value
+pdf(paste0(fig_dir, "edf4c_malignant_hypergeometric_gene_overlap_enrichment.pdf"), width = 5, height = 4.5, useDingbats = FALSE, bg = "transparent")
+ggplot(res_plot, aes(x = MP, y = Pathway, fill = -log10(p.adj))) +
+  geom_tile() +
+  scale_fill_viridis(limits=c(0,20), option = "D", oob=squish, name="Significance\n-log10(p-value)") +
+  labs(y = "Enriched Genesets", x = "CARE IDH-mutant malignant MPs", fill="Significance\n-log10(adj. p-value)") + 
+  plot_theme + 
+  theme(axis.ticks.x=element_blank(), 
+        panel.border = element_rect(fill=F), 
+        panel.background = element_blank(),  
+        axis.line = element_blank(), 
+        legend.text = element_text(size = 8), 
+        legend.text.align = 0.5, 
+        legend.justification = "bottom",
+        axis.text.x = element_text(angle = 45, vjust = 1, size = 8, hjust = 1)) + 
+  guides(fill = guide_colourbar(barheight = 4, barwidth = 1)) +
+  scale_y_discrete(breaks = y_labels_to_display) 
+dev.off()
 
 ### END ###

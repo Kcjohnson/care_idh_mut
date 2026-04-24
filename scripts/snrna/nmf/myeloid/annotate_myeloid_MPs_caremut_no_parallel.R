@@ -60,8 +60,8 @@ myeloid_nmf_metaprograms <- derive_NMF_metaprograms(Genes_nmf_w_basis = Genes_nm
 # The myeloid_nmf_metaprograms object is a list containing the clusters (i.e. the NMF programs from which each MP was derived)
 # and the MPs in tabular and list form
 
-# saveRDS(myeloid_nmf_metaprograms, file= "/vast/palmer/pi/verhaak/kcj28/care_mut/results/nmf_res/metaprograms/myeloid/myeloid_nmf_metaprograms_out.RDS")
-myeloid_nmf_metaprograms <- readRDS("/vast/palmer/pi/verhaak/kcj28/care_mut/results/nmf_res/metaprograms/myeloid/myeloid_nmf_metaprograms_out.RDS")
+# saveRDS(myeloid_nmf_metaprograms, file= "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/metaprograms/myeloid_no_parallel/myeloid_nmf_metaprograms_out.RDS")
+myeloid_nmf_metaprograms <- readRDS("/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/metaprograms/myeloid_no_parallel/myeloid_nmf_metaprograms_out.RDS")
 
 # Inspect the out and determine whether there is representation from the IDH-O tumors in some of the MPs
 # meta from care to separate based on codel status.
@@ -77,10 +77,17 @@ mp_res_df$SampleID <- sapply(strsplit(mp_res_df$Sample, "_"), "[[", 1)
 mp_res_df_annot <- mp_res_df %>% 
   inner_join(meta_care, "SampleID")
 
-# What's the distribution of clusters across subtype and timepoint - 
+# What's the distribution of clusters across tumor type and lab
+# MP10 and MP8 are not detected in oligodendroglioma
 table(mp_res_df_annot$Cluster, mp_res_df_annot$idh_codel_subtype)
 table(mp_res_df_annot$Cluster, mp_res_df_annot$lab)
-table(mp_res_df_annot$Cluster, mp_res_df_annot$timepoint)
+
+sample_input_md <- mp_res_df_annot %>% 
+  dplyr::select(care_id, lab, idh_codel_subtype) %>% 
+  distinct()
+# 30 (Oligo.) and 43 (Astro.)
+table(sample_input_md$idh_codel_subtype)
+table(sample_input_md$idh_codel_subtype, sample_input_md$lab)
 
 mp_res_df_annot_distinct <- mp_res_df_annot %>% 
   dplyr::select(Cluster, care_id:timepoint, sample_barcode:idh_codel_subtype) %>% 
@@ -93,7 +100,7 @@ mp_by_subtype <- mp_res_df_annot_distinct %>%
   ungroup() %>% 
   pivot_wider(names_from = idh_codel_subtype, values_from = counts)
 mp_by_subtype[is.na(mp_by_subtype)] <- 0
-mp_by_subtype$IDH_A_freq <- mp_by_subtype$`IDH-A` / 45
+mp_by_subtype$IDH_A_freq <- mp_by_subtype$`IDH-A` / 43
 mp_by_subtype$IDH_O_freq <- mp_by_subtype$`IDH-O` / 30
 
 mp_by_subtype_long <- mp_by_subtype %>% 
@@ -104,24 +111,23 @@ mp_by_subtype_long <- mp_by_subtype %>%
 
 mp_by_subtype_long$Cluster <- factor(mp_by_subtype_long$Cluster, levels=c("MP_1", "MP_2", "MP_3", "MP_4", "MP_5", "MP_6",
                                                                           "MP_7", "MP_8", "MP_9", "MP_10", "MP_11", "MP_12",
-                                                                          "MP_13", "MP_14", "MP_15"))
+                                                                          "MP_13", "MP_14"))
 mp_by_subtype_long$subtype <- factor(mp_by_subtype_long$subtype, levels=c("IDH_O_freq", "IDH_A_freq"))
 
 source("/vast/palmer/pi/verhaak/kcj28/care_mut/scripts/misc/plot_theme.R")
 fig_dir <-"/vast/palmer/pi/verhaak/kcj28/care_mut/results/figures/classification/tme/"
 
-pdf(paste0(fig_dir, "caremut_myeloid_metaprogram_sample_contribution_by_subtype.pdf"), width = 5, height = 4, useDingbats = FALSE)
+pdf(paste0(fig_dir, "caremut_myeloid_metaprogram_sample_contribution_by_tumor_type_20260416.pdf"), width = 5, height = 4, useDingbats = FALSE)
 ggplot(mp_by_subtype_long, aes(x=Cluster, y=freq*100, fill=subtype)) +
   geom_bar(position="dodge", stat="identity") +
   plot_theme +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "top") +
-  geom_hline(yintercept = 25) +
-  scale_fill_manual(values=c("IDH_A_freq" = "#67A9CF", 
-                             "IDH_O_freq"="#EF8A62"),
-                    labels=c("IDH_A_freq" = "IDH-A",
-                             "IDH_O_freq" = "IDH-O")) +
-  labs(x="Metaprogram", y="Percent contributing samples\n(proportional to subtype)")
+  scale_fill_manual(values=c("IDH_A_freq" = "#800074", 
+                             "IDH_O_freq"="#298C8C"),
+                    labels=c("IDH_A_freq" = "Astro.",
+                             "IDH_O_freq" = "Oligo.")) +
+  labs(x="Myeloid metaprogram", y="Percent contributing samples\n(proportional to tumor type)", fill = "Tumor type")
 dev.off()
 
 mp_by_lab <- mp_res_df_annot_distinct %>% 
@@ -130,19 +136,19 @@ mp_by_lab <- mp_res_df_annot_distinct %>%
   summarise(counts = n()) %>% 
   ungroup() %>% 
   pivot_wider(names_from = lab, values_from = counts)
-mp_by_lab$Iavarone_lab_freq <- mp_by_lab$`Iavarone lab` / 8
+mp_by_lab[is.na(mp_by_lab)] <- 0
+mp_by_lab$Iavarone_lab_freq <- mp_by_lab$`Iavarone lab` / 7
 mp_by_lab$Suva_lab_freq <- mp_by_lab$`Suva lab` / 16
-mp_by_lab$Verhaak_lab_freq <- mp_by_lab$`Verhaak lab` / 21
+mp_by_lab$Verhaak_lab_freq <- mp_by_lab$`Verhaak lab` / 20
 
 mp_by_lab_long <- mp_by_lab %>% 
   dplyr::select(Cluster, Iavarone_lab_freq:Verhaak_lab_freq) %>% 
-  #mutate(IDH_O_freq = ifelse(is.na(IDH_O_freq), 0, IDH_O_freq)) %>% 
   pivot_longer(cols=c( Iavarone_lab_freq:Verhaak_lab_freq), names_to = "lab", values_to = "freq") %>% 
   mutate(Cluster = gsub("Cluster_", "MP_", Cluster))
 
 mp_by_lab_long$Cluster <- factor(mp_by_lab_long$Cluster, levels=c("MP_1", "MP_2", "MP_3", "MP_4", "MP_5", "MP_6",
                                                                   "MP_7", "MP_8", "MP_9", "MP_10", "MP_11", "MP_12",
-                                                                  "MP_13", "MP_14", "MP_15"))
+                                                                  "MP_13", "MP_14"))
 
 pdf(paste0(fig_dir, "caremut_myeloid_metaprogram_noncodel_sample_contribution_by_lab.pdf"), width = 5, height = 4, useDingbats = FALSE)
 ggplot(mp_by_lab_long, aes(x=Cluster, y=freq*100, fill=lab)) +
@@ -151,14 +157,11 @@ ggplot(mp_by_lab_long, aes(x=Cluster, y=freq*100, fill=lab)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "top") +
   scale_fill_manual(values =c( "Iavarone_lab_freq"= "#7570b3", "Suva_lab_freq"="#d95f02", "Verhaak_lab_freq"="#1b9e77"),
-                    labels =c("Iavarone_lab_freq"="Iavarone(n=8)", "Verhaak_lab_freq"="Verhaak(n=21)", "Suva_lab_freq"="Suva(n=16)"),
+                    labels =c("Iavarone_lab_freq"="Iavarone(n=7)", "Verhaak_lab_freq"="Verhaak(n=20)", "Suva_lab_freq"="Suva(n=16)"),
                     name="Lab") +
   labs(x="Metaprogram", y="Percent contributing samples\n(proportional to lab)")
 dev.off()
 
-
-table(mp_res_df_annot_distinct$Cluster, mp_res_df_annot_distinct$lab)
-table(mp_res_df_annot_distinct$Cluster, mp_res_df_annot_distinct$timepoint)
 
 
 ### END ###

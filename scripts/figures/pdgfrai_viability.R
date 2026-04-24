@@ -1,8 +1,9 @@
 ##############################
 ## Visualize experimental PDGFRAi analyses
 ## Author: Kevin Johnson
-## Updated: 2026.03.30
 ##############################
+
+# Listed as 637451 in the data but should be 673451
 
 library(tidyverse)
 library(ggpubr)
@@ -31,10 +32,12 @@ viability_df <- viability_df %>%
 viability_df$SampleID <- factor(viability_df$SampleID, levels=c("T394NS DMSO ctr", "T394NS Dasatinib 1uM", "T394NS Dasatinib 5uM", "T394NS CP-637451 1uM", "T394NS CP-637451 5uM",
                                                                 "T407NS DMSO ctr", "T407NS Dasatinib 1uM", "T407NS Dasatinib 5uM", "T407NS CP-637451 1uM", "T407NS CP-637451 5uM"))
 
-pdf(paste0(fig_dir, "pdgfrai_trypan_blue_relative_viability.pdf"), width = 3.5, height = 3, useDingbats = FALSE)
-ggplot(viability_df, aes(x = SampleID, y=relative2dmso_live, fill = treatment_group)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_point(size = 0.6) + 
+viability_df$treatment <- factor(viability_df$treatment, levels=c("DMSO ctr", "Dasatinib 1uM", "Dasatinib 5uM", "CP-637451 1uM", "CP-637451 5uM"))
+
+pdf(paste0(fig_dir, "pdgfrai_trypan_blue_relative_viability.pdf"), width = 2.75, height = 2.75, useDingbats = FALSE)
+ggplot(viability_df, aes(x = treatment, y=relative2dmso_live)) +
+  geom_boxplot(aes(fill = treatment_group), outlier.shape = NA) +
+  geom_point(size = 0.5) + 
   plot_theme +
   facet_grid(.~cell_line, space = "free", scales = "free") +
   theme(
@@ -48,10 +51,10 @@ ggplot(viability_df, aes(x = SampleID, y=relative2dmso_live, fill = treatment_gr
   )) +
   labs(y = "% relative viable cell count",
        x = "Treatment") +
-  ylim(0, 105) #+
-  #stat_compare_means(method="kruskal", label="p.format", size = 2.25)
+  ylim(0, 105) +  
+  stat_compare_means(method="kruskal", label="p.format", size = 2.25) +
+  stat_n_text(size = 2.25)
 dev.off()
-
 
 # Reformat the cell cycle analyses
 cellcycle_df$replicate <- sapply(strsplit(cellcycle_df$exp_replicate, " R"), "[[", 2)

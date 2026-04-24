@@ -1,7 +1,6 @@
 ##################################
 # Visualize the CIBERSORTx estimated cell type/state abundance in the Glioma Longitudinal AnalySiS (GLASS) RNA sequencing dataset across grade, time points, and stratified by genetics.
 # Author: Kevin Johnson
-# Date Updated: 2026.04.07
 ##################################
 
 # This script generates figures related to analysis of GLASS cohort, largely using CIBERSORTx results.
@@ -39,7 +38,7 @@ top_transcriptional_subtype   <- read.table(file.path(base_data_dir, "glass_anal
 sample_md <- read.delim("/vast/palmer/pi/verhaak/kcj28/care_mut/data/metadata/clinical_samples_genomic_md_20240608.txt", sep="\t", header = TRUE)
 patient_md <- read.delim("/vast/palmer/pi/verhaak/kcj28/care_mut/data/metadata/clinical_patient_genomic_md_20240608.txt", sep="\t", header = TRUE)
 longitudinal_genetic_df <- read.delim("/vast/palmer/pi/verhaak/kcj28/care_idh_mut/data/glass/case_longitudinal_acquired_genetic_event_annotation.txt", sep="\t", header = TRUE)
-mp_gsea <- read.delim("/vast/palmer/pi/verhaak/kcj28/care_mut/results/glass/caremut_malignant_plus_myeloid_metaprograms_ssgsea_20260407.txt", sep="\t", row.names = 1, header = TRUE)
+mp_gsea <- read.delim("/vast/palmer/pi/verhaak/kcj28/care_mut/results/glass/caremut_malignant_plus_myeloid_metaprograms_ssgsea_20260416.txt", sep="\t", row.names = 1, header = TRUE)
 colnames(mp_gsea) <- gsub("\\.","-",colnames(mp_gsea))
 mp_gsea <- as.data.frame(t(mp_gsea))
 mp_gsea$aliquot_barcode <- row.names(mp_gsea)
@@ -187,13 +186,13 @@ ggplot(pairwise_fractions, aes(x=snrna*100, y=bulk_rna*100)) +
 
 pairwise_fractions$cell_type <- factor(pairwise_fractions$cell_type, levels=c("Malignant", "Oligodendrocyte", "Myeloid", "Neuron"))
 
-pdf(paste0(fig_dir, "edf3d_matched_snrna_bulk_rna_n38_pearson.pdf"), width = 4.5, height = 4, useDingbats = FALSE)
+pdf(paste0(fig_dir, "edf3d_matched_snrna_bulk_rna_n38_pearson.pdf"), width = 3, height = 3, useDingbats = FALSE)
 ggplot(pairwise_fractions %>% 
          filter(cell_type%in%c("Malignant", "Oligodendrocyte", "Myeloid", "Neuron")), aes(x=snrna*100, y=bulk_rna*100, color=cell_type)) +
-  geom_point() +
+  geom_point(size = 0.5) +
   geom_smooth(method="lm", se = FALSE) +
   scale_color_manual(values=c("Malignant" = "#FB8072", "Oligodendrocyte" = "#B3DE69", "Myeloid" = "#80B1D3",  "Neuron" = "#BC80BD")) +
-  stat_cor(method="pearson") + 
+  stat_cor(method="pearson", size = 2.25) + 
   plot_theme +
   theme(legend.position = "bottom") +
   labs(x="snRNA abundance (%)", y="Bulk CIBERSORTx abundance (%)",  
@@ -284,10 +283,10 @@ pairwise_fractions_select <- pairwise_fractions %>%
 pairwise_fractions_select$cell_type <- factor(pairwise_fractions_select$cell_type, levels=c("AC-like", "MES-like", "Undifferentiated", "OPC-like", "NPC-like"))
 n_distinct(pairwise_fractions_select$sample_barcode)
 
-pdf(paste0(fig_dir, "edf7b_matched_snrna_bulk_rna_malignant_correlations_n37.pdf"), width = 4, height = 4, useDingbats = FALSE)
+pdf(paste0(fig_dir, "edf7b_matched_snrna_bulk_rna_malignant_correlations_n37.pdf"), width = 4, height = 3, useDingbats = FALSE)
 ggplot(pairwise_fractions_select %>% 
          filter(cell_type%in%c("Undifferentiated","AC-like", "NPC-like", "OPC-like", "MES-like")), aes(x=snrna*100, y=bulk_rna*100, color=cell_type)) +
-  geom_point() +
+  geom_point(size = 0.5) +
   geom_smooth(method="lm", se = FALSE) +
   stat_cor(method="pearson", size = 2.25) + 
   plot_theme +
@@ -441,7 +440,7 @@ ggplot(all_mut_csx_fractions_malignant_adj %>%
 dev.off()
 
 #### Tumor grade 
-pdf(paste0(fig_dir, "glass_grade_rna_n130_wilcox.pdf"),  width = 4, height = 3, useDingbats = FALSE)
+pdf(paste0(fig_dir, "glass_grade_rna_n130_wilcox.pdf"),  width = 4, height = 2.75, useDingbats = FALSE, bg = "transparent")
 ggplot(all_mut_csx_fractions_malignant_adj %>% 
          filter(cell_type%in%c("AC-like", "OPC-like", "NPC-like", "MES-like", "Undifferentiated"), !case_barcode%in%care_cases$case_barcode), aes(x = grade_num, y = malignant_freq*100)) + 
   geom_boxplot(aes(fill=cell_type), outlier.shape = NA) +
@@ -462,7 +461,7 @@ ggplot(all_mut_csx_fractions_malignant_adj %>%
   ylim(-10, 100)
 dev.off()
 
-pdf(paste0(fig_dir, "edf7e_glass_grade_rna_n130_kruskal.pdf"),  width = 4, height = 3, useDingbats = FALSE)
+pdf(paste0(fig_dir, "edf7e_glass_grade_rna_n130_kruskal.pdf"),  width = 4, height = 2.75, useDingbats = FALSE, bg = "transparent")
 ggplot(all_mut_csx_fractions_malignant_adj %>% 
          filter(cell_type%in%c("AC-like", "OPC-like", "NPC-like", "MES-like", "Undifferentiated"), !case_barcode%in%care_cases$case_barcode), aes(x = grade_num, y = malignant_freq*100)) + 
   geom_boxplot(aes(fill=cell_type), outlier.shape = NA) +
@@ -569,7 +568,7 @@ dev.off()
 
 # Tidy up the GSEA scores.
 mp_gsea_filt <- mp_gsea %>% 
-  dplyr::select(aliquot_barcode, MP_CC_malignant)
+  dplyr::select(aliquot_barcode, MP_CC_malignant, `BMDM-like-MP` = MP_2_myeloid, `MG-like-MP` = MP_4_myeloid)
 
 glass_long_ssgsea <- rna_silver_set %>% 
   inner_join(subtypes, by="case_barcode") %>% 
@@ -604,5 +603,83 @@ ggplot(glass_long_ssgsea_genetics, aes(x = timepoint, y =ssGSEA)) +
   facet_grid(acquired_genetic_alt_S1S2~., scales="free") 
 dev.off()
 
+
+# Microglia and Bone marrow-derived macrophage-like metaprogram scores
+glass_long_ssgsea_macrophage <- rna_silver_set %>% 
+  inner_join(subtypes, by="case_barcode") %>% 
+  # Do not include IDH-wildtype or any CARE IDH-mutant cases where we are already measuring by snRNA
+  filter(idh_codel_subtype!="IDHwt", !case_barcode%in%care_cases$case_barcode) %>% 
+  inner_join(mp_gsea_filt, by=c("tumor_barcode_a"="aliquot_barcode")) %>% 
+  inner_join(mp_gsea_filt, by=c("tumor_barcode_b"="aliquot_barcode")) %>% 
+  dplyr::select(case_barcode, `BMDM-like-MP.x`, `BMDM-like-MP.y`, ) %>% 
+  pivot_longer(cols=c(`BMDM-like-MP.x`, `BMDM-like-MP.y`), names_to = "timepoint", values_to = "ssGSEA") %>% 
+  mutate(timepoint = recode(timepoint, `BMDM-like-MP.x` = "Init.",
+                            `BMDM-like-MP.y` = "Recur.")) %>% 
+  mutate(paired = rep(1:(n()/2), each=2)) %>% 
+  dplyr::select(case_barcode, timepoint, `BMDM-like MP` = ssGSEA, paired)
+
+glass_long_ssgsea_microglia <- rna_silver_set %>% 
+  inner_join(subtypes, by="case_barcode") %>% 
+  # Do not include IDH-wildtype or any CARE IDH-mutant cases where we are already measuring by snRNA
+  filter(idh_codel_subtype!="IDHwt", !case_barcode%in%care_cases$case_barcode) %>% 
+  inner_join(mp_gsea_filt, by=c("tumor_barcode_a"="aliquot_barcode")) %>% 
+  inner_join(mp_gsea_filt, by=c("tumor_barcode_b"="aliquot_barcode")) %>% 
+  dplyr::select(case_barcode,`MG-like-MP.x`, `MG-like-MP.y`) %>% 
+  pivot_longer(cols=c(`MG-like-MP.x`, `MG-like-MP.y`), names_to = "timepoint", values_to = "ssGSEA") %>% 
+  mutate(timepoint = recode(timepoint, `MG-like-MP.x` = "Init.",
+                            `MG-like-MP.y` = "Recur.")) %>% 
+  mutate(paired = rep(1:(n()/2), each=2)) %>% 
+  dplyr::select(case_barcode, timepoint, `MG-like MP` = ssGSEA, paired)
+
+rna_silver_set_clinical <- rna_silver_set %>% 
+  inner_join(tumor_rna_clinical_comparison, by = c("tumor_pair_barcode", "case_barcode", "tumor_barcode_a", "tumor_barcode_b")) %>% 
+  mutate(received_rt = recode(received_rt, `1` = "RT",
+                              `0` = "No RT"),
+         tumor_type = recode(idh_codel_subtype, `IDHmut-codel` = "Oligo.",
+                              `IDHmut-noncodel` = "Astro.")) %>% 
+  filter(case_barcode%in%c(glass_long_ssgsea_microglia$case_barcode)) %>% 
+  dplyr::select(case_barcode, received_rt, tumor_type)
+
+ssgsea_myeloid <- glass_long_ssgsea_macrophage %>% 
+  inner_join(glass_long_ssgsea_microglia) %>% 
+  inner_join(rna_silver_set_clinical, by = "case_barcode") %>% 
+  pivot_longer(cols = c(`BMDM-like MP`, `MG-like MP`), names_to = "metaprogram", values_to = "ssGSEA")
+
+ssgsea_myeloid$metaprogram <- factor(ssgsea_myeloid$metaprogram, levels = c("MG-like MP", "BMDM-like MP"))
+
+ggplot(ssgsea_myeloid %>% 
+         filter(!is.na(received_rt)), aes(x = timepoint, y =ssGSEA)) + 
+  geom_boxplot(outlier.shape = NA) +
+  geom_point(aes(color=tumor_type), size = 0.5) +
+  geom_line(aes(group=paired), color="gray70", linetype=2, size = 0.5) +
+  scale_linetype_manual(values="dashed") +
+  plot_theme +
+  scale_color_manual(values = c("Astro." = "#800074",
+                                "Oligo."="#298C8C")) +
+  theme(legend.position = "bottom") +
+  stat_compare_means(label = "p.format", method = "wilcox", paired = TRUE, size = 2.25) +
+  labs(x="Matched longitudinal analysis", y="GLASS RNA ssGSEA - signature score", color = "Tumor type") +
+  theme(strip.background = element_blank()) +
+  stat_n_text(size = 2.25) +
+  facet_grid(received_rt~metaprogram, scales="free") 
+
+
+pdf(paste0(fig_dir, "edf10_glass_microglia_score_rt.pdf"), width = 2.25, height = 2.75, useDingbats = FALSE, bg = "transparent")
+ggplot(ssgsea_myeloid %>% 
+         filter(!is.na(received_rt), metaprogram=="MG-like MP"), aes(x = timepoint, y =ssGSEA)) + 
+  geom_boxplot(outlier.shape = NA) +
+  geom_point(aes(color=tumor_type), size = 0.5) +
+  geom_line(aes(group=paired), color="gray70", linetype=2, size = 0.5) +
+  scale_linetype_manual(values="dashed") +
+  plot_theme +
+  scale_color_manual(values = c("Astro." = "#800074",
+                                "Oligo."="#298C8C")) +
+  theme(legend.position = "bottom") +
+  stat_compare_means(label = "p.format", method = "wilcox", paired = TRUE, size = 2.25) +
+  labs(x="Matched longitudinal analysis", y="GLASS RNA ssGSEA - signature score", color = "Tumor type") +
+  theme(strip.background = element_blank()) +
+  stat_n_text(size = 2.25) +
+  facet_grid(received_rt~metaprogram, scales="free") 
+dev.off()
 
 ### END ###

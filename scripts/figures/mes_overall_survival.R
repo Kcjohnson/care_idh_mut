@@ -4,9 +4,9 @@
 # Date Updated: 2026.04.04
 ##################################
 
-library(tidyverse)
-library(ggpubr)
-library(EnvStats)
+library(tidyverse) # 2.0.0
+library(ggpubr) # 0.6.0
+library(EnvStats) # 2.8.0
 library(survival) # 3.5-7
 library(survminer) # 0.4.9
 library(forestmodel) # 0.6.2 
@@ -162,16 +162,25 @@ care_t2_mes_oligo %>%
             min_levels = min(freq),
             mean_levels = mean(freq))
 
+dim(care_t2_mes_astro)
+table(care_t2_mes_astro$MES_T2_levels)
+
 fit_mes_t2_astro <- survfit(Surv(case_overall_survival_mo, patient_vital) ~ MES_T2_levels,
                             data = care_t2_mes_astro)  
 
 mes_t2_astro <- ggsurvplot(fit_mes_t2_astro, data = care_t2_mes_astro, risk.table = FALSE, pval= TRUE, 
                            surv.median.line = "hv",
                            palette = c("royalblue4", "tomato3"),
-                           ylab = "Overall survival probability\nAstro. (n = 22)", xlab = "Time (months)")
+                           ylab = "Overall survival probability\nAstro. (n = 22)", xlab = "Time (months)",
+                           font.x = 8,
+                           font.y = 8,
+                           font.tickslab = 8,
+                           font.legend = 8,
+                           pval.size = 2.8, 
+                           font.title = 8) 
 
 p <- mes_t2_astro
-pdf(paste0(fig_dir, "fig5f_astro_recurrence_mes_median_os_km.pdf"), width = 5, height = 4, useDingbats = FALSE)
+pdf(paste0(fig_dir, "fig5f_astro_recurrence_mes_median_os_km.pdf"), width = 3.25, height = 2, useDingbats = FALSE)
 print(p$plot)
 dev.off()
 
@@ -189,17 +198,26 @@ print(p$plot)
 dev.off()
 
 ## Oligodendroglioma
+dim(care_t2_mes_oligo)
+table(care_t2_mes_oligo$MES_T2_levels)
+
 fit_mes_t2_oligo <- survfit(Surv(case_overall_survival_mo, patient_vital) ~ MES_T2_levels,
                             data = care_t2_mes_oligo)  
 
 mes_t2_oligo <- ggsurvplot(fit_mes_t2_oligo, data = care_t2_mes_oligo, risk.table = FALSE, pval= TRUE, 
                            surv.median.line = "hv",
                            palette = c("royalblue4", "tomato3"),
-                           ylab = "Overall survival probability\nOligo. (n = 13)", xlab = "Time (months)")
+                           ylab = "Overall survival probability\nOligo. (n = 13)", xlab = "Time (months)",
+                           font.x = 8,
+                           font.y = 8,
+                           font.tickslab = 8,
+                           font.legend = 8,
+                           pval.size = 2.8, 
+                           font.title = 8)
 
-p <- mes_t2_oligo
-pdf(paste0(fig_dir, "fig5f_oligo_recurrence_mes_median_os_km.pdf"), width = 5, height = 4, useDingbats = FALSE)
-print(p$plot)
+p_oligo <- mes_t2_oligo
+pdf(paste0(fig_dir, "fig5f_oligo_recurrence_mes_median_os_km.pdf"), width = 3.25, height = 2, useDingbats = FALSE, bg = "transparent")
+print(p_oligo$plot)
 dev.off()
 
 post_recur_fit_mes_oligo <- survfit(Surv(post_t2_survival, patient_vital) ~ MES_T2_levels,
@@ -208,7 +226,13 @@ post_recur_fit_mes_oligo <- survfit(Surv(post_t2_survival, patient_vital) ~ MES_
 post_recur_mes_t2_oligo <- ggsurvplot(post_recur_fit_mes_oligo, data = care_t2_mes_oligo, risk.table = FALSE, pval= TRUE, 
                                       surv.median.line = "hv",
                                       palette = c("royalblue4", "tomato3"),
-                                      ylab = "Post-recurrence survival\nprobability Astro. (n = 22)", xlab = "Time (months)")
+                                      ylab = "Post-recurrence survival\nprobability Astro. (n = 22)", xlab = "Time (months)",
+                                      font.x = 8,
+                                      font.y = 8,
+                                      font.tickslab = 8,
+                                      font.legend = 8,
+                                      pval.size = 2.8, 
+                                      font.title = 8)
 
 p <- post_recur_mes_t2_oligo
 pdf(paste0(fig_dir, "fig5f_oligo_recurrence_mes_median_post_recurrence_km.pdf"), width = 5, height = 4, useDingbats = FALSE)

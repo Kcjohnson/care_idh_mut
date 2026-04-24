@@ -20,7 +20,7 @@ mal_longitudinal_abundance$State <- factor(mal_longitudinal_abundance$State, lev
 mal_longitudinal_abundance$idh_codel_subtype <- factor(mal_longitudinal_abundance$idh_codel_subtype, levels=c("Oligo.", "Astro."))
 
 
-pdf(paste0(fig_dir, "public_all_samples_grade_n139_kruskal.pdf"), width = 4, height = 3, useDingbats = FALSE, bg = "transparent")
+pdf(paste0(fig_dir, "public_all_samples_grade_n139_kruskal.pdf"), width = 4.25, height = 2.75, useDingbats = FALSE, bg = "transparent")
 ggplot(mal_longitudinal_abundance %>% 
          filter(!is.na(grade)), aes(x = as.factor(grade), y = freq*100)) + 
   geom_boxplot(aes(fill=State), outlier.shape = NA) +
@@ -35,7 +35,7 @@ ggplot(mal_longitudinal_abundance %>%
                              "Undifferentiated" = "gray90")) +
   stat_compare_means(method = "kruskal", paired = FALSE, size = 2.25, label="p.format") +
   facet_grid(idh_codel_subtype~State, scales="free") +
-  stat_n_text(size = 2.25) +
+  stat_n_text(size = 2) +
   labs(x="Publicly available sc/snRNA (n = 139)", y="Relative malignant cell proportion (%)")
 dev.off()
 
