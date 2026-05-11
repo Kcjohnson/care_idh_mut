@@ -1,10 +1,9 @@
 ##############################
 ### Assess chromatin gene activity (ATAC) across time points (init. vs recur.) controlled for RNA state
 ### Author: Kevin Johnson
-### Updated: 2026.04.08
 ##############################
 
-## Part 6: Longitudinal per-patient analysis of differential gene chromatin accessibility per cell state
+## Longitudinal per-patient analysis of differential gene chromatin accessibility per cell state
 
 workdir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/atac/"
 setwd(workdir)
@@ -146,7 +145,7 @@ patient_list_results <- do.call(rbind, outlist)
 patient_list_results_filtered <- patient_list_results %>% 
   filter(state_use!=state_bgd)
 
-# Inspect where different thresholds should be applied
+# Inspect where different thresholds should be applied. While I started off with > 25 cells, I increased the number for this analysis.
 patient_list_results_filtered %>% 
   filter(use_cells > 49, bgd_cells > 49)
 

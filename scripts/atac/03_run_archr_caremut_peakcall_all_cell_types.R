@@ -1,10 +1,9 @@
 ##############################
 ### Run ArchR peak calling analysis on CAREmut multiome ATAC data for all cell types
 ### Author: Kevin Johnson
-### Updated: 2026.04.08
 ##############################
 
-## Part 3: Peak calling on all RNA-defined CELL TYPES across IDH-mutant tumors
+## Peak calling on all RNA-defined CELL TYPES across IDH-mutant tumors
 
 # Specify directories
 workdir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/atac/"
@@ -236,7 +235,7 @@ markersPeaks <- getMarkerFeatures(
   groupBy = "CellType_final",
   bias = c("TSSEnrichment", "log10(nFrags)"),
   testMethod = "wilcoxon",
-  maxCells = 2000
+  maxCells = 2000 # Boosting the default number a little higher
 )
 
 

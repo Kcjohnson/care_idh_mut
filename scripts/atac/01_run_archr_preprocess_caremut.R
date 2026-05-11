@@ -1,7 +1,6 @@
 ##############################
 ### Run ArchR analyses on CARE IDH-mutant multiome data (48 samples)
 ### Author: Kevin Johnson
-### Updated: 2026.03.30
 ##############################
 
 # ArchR creates several directories automatically when creating arrow files and ArchR projects.

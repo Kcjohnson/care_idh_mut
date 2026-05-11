@@ -1,10 +1,9 @@
 ##############################
 ### Run ArchR peak calling analysis on CAREmut multiome ATAC data for all malignant states - NPC, OPC, Undiff, MES, AC
 ### Author: Kevin Johnson
-### Updated: 2026.04.08
 ##############################
 
-## Part 4: Generate malignant UMAP and perform differential gene/peak accessibility on RNA-defined MALIGNANT states across IDH-mutant tumors
+## Generate malignant UMAP and perform differential gene/peak accessibility on RNA-defined MALIGNANT states across IDH-mutant tumors
 
 workdir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/atac/"
 setwd(workdir)
@@ -551,7 +550,7 @@ names(CARE_filt_rna_malignant_peaks@peakAnnotation)
 
 ## Compute the per-cell deviations across all of our motif annotations.
 ## This function has an optional parameter called matrixName that allows us to define the name of deviations.
-## The option below creates a deviation matrix in each of the Arrow files called "DevMatrix" or MotifMatrix. Force indicates whether the matrix listed should be overwritten.
+## The option below creates a deviation matrix in each of the Arrow files called "DevMatrix" or "MotifMatrix". Force indicates whether the matrix listed should be overwritten.
 # "Identifying Background Peaks!" will run if not background peaks haven't been added already.
 CARE_filt_rna_malignant_peaks <- addDeviationsMatrix(
   ArchRProj = CARE_filt_rna_malignant_peaks, 

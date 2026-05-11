@@ -1,10 +1,9 @@
 ##############################
-### Run ArchR peak calling analysis on CAREmut multiome ATAC data longitudinal analysis of TME cell states
+### Run ArchR peak calling analysis on CAREmut multiome ATAC data longitudinal analysis of TME cell type
 ### Author: Kevin Johnson
-### Updated: 2026.04.08
 ##############################
 
-## Part 8: Longitudinal per-patient analysis of differential chromatin accessibility per cell state
+## Longitudinal per-patient analysis of differential chromatin accessibility per cell type
 
 # Specify directories
 workdir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/atac/"

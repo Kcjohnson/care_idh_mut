@@ -1,10 +1,9 @@
 ##############################
 ### Run ArchR RNA and ATAC Multiome integration for peak-to-gene linkage
 ### Author: Kevin Johnson
-### Updated: 2026.04.08
 ##############################
 
-# Part 9: Create a visualization for peak to gene linkage (RNA+ATAC)
+# Create a visualization for peak to gene linkage (RNA+ATAC)
 
 workdir <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/atac/"
 setwd(workdir)
@@ -144,7 +143,7 @@ length(colnames(rna_combined_se))
 # Use gene ranges from one of the imported 10x objects
 rowRanges(rna_combined_se) <- rowRanges(rna_list[[1]])[rownames(rna_combined_se)]
 
-# Most of the cells were also recovered from RNA as well in the cellranger-arc pipeline (99.2%, 70,835 out of 71,365).
+# Most of the cells were also recovered from RNA as well in the cellranger-arc pipeline (99.2%, 70,835 out of 71,365). This is mentioned as it's different from the CellRanger 6.1.2 used for RNA-only analyses.
 cellsToKeep <- which(getCellNames(CARE_filt_rna_malignant_multiome) %in% colnames(rna_combined_se))
 cellsSample <- getCellNames(CARE_filt_rna_malignant_multiome)[cellsToKeep]
 
@@ -317,7 +316,7 @@ p2g$peakName <- (metadata(p2g)$peakSet %>% {paste0(seqnames(.), "_", start(.), "
 p2g
 metadata(p2g)$seRNA
 
-# While the major cell type differences differ in the clustering, the exact clustering is pretty dependent on selection of k and corCutOff (as expected)
+# While the major malignant cell states  are mostly separated in the hierarchical clustering, the exact clustering is pretty dependent on selection of k and corCutOff (as expected)
 p2g_heat <- plotPeak2GeneHeatmap(ArchRProj = projMulti2, 
                                groupBy = "CellStateGroup",
                                palGroup=cols,

@@ -73,10 +73,10 @@ markersGS <- getMarkerFeatures(
   maxCells = 500
 )
 
-## Extract the marker list. I relaxed the thresholds because there were too few features
+## Extract the marker list. I relaxed the thresholds because there were too few features with Log2FC > 1.
 markerList <- getMarkers(markersGS, cutOff = "FDR <= 0.05 & Log2FC >= 0.5")
 
-# Examine the distribution of differentially accessible genes. Relatively few compare with malignant. No marker for Unresolved
+# Examine the distribution of differentially accessible genes. Relatively few compare with malignant. No marker for Unresolved.
 lapply(markerList, nrow)
 data.frame(markerList$Macrophage)
 data.frame(markerList$Inflammatory)

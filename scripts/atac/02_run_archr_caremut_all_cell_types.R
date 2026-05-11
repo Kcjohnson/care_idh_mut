@@ -1,7 +1,6 @@
 ##############################
 ### Run ArchR analyses on CAREmut multiome ATAC data
 ### Author: Kevin Johnson
-### Updated: 2026.03.30
 ##############################
 
 ## ArchR creates several directories automatically when creating arrow files and ArchR projects.
@@ -43,10 +42,10 @@ atac_df <- data.frame(projCARE_filt$cellNames, projCARE_filt@cellColData$Sample,
 # The cell names are a little different between RNA (Seurat) and ATAC (ArchR). Need to create a common linker.
 atac_df$CellID <- gsub("#", "-", atac_df$projCARE_filt.cellNames)
 
-# ~118K cells present in ATACseq data that pass doublet removal and are also found in snRNAseq data that passed QC for IDH-mutant.
+# ~118K cells present in ATACseq data that pass doublet removal and are also found in snRNAseq data that passed QC for IDH-mutant snRNA.
 sum(atac_df$CellID%in%mut_md_verhaak$CellID)
 
-# Combine the two data.frames by adding on the RNA data and filtering out what's leftover. There are about ~60,000 ATAC nuclei that are removed when focusing on the cells that pass QC for both.
+# Combine the two data.frames by adding on the RNA data and filtering out what's leftover. There are about ~60,000 ATAC nuclei that are removed when focusing on the cells that pass QC for both platforms.
 atac_df_filt_rna <- atac_df %>% 
   inner_join(mut_md_verhaak, by="CellID") 
 
@@ -335,10 +334,11 @@ atac_out_filt <- atac_out %>%
                                  `Endothelial` = "Endo/Mural",
                                  `InhNeuron` = "Neuron",
                                  `ExcNeuron` = "Neuron")) %>% 
+  # Note: That we have not defined unresolved cells in ATAC dataset, rather it is excluded for this comparison.
   filter(CellType_final!="Unresolved")
 
 # IMPORTANT - 98.7% of cells would have clusters that are defined as the same cell type (i.e., Malignant==Malignant, Myeloid==Myeloid etc).
-# Note: That we have not defined unresolved cells in ATAC dataset, rather it is excluded for this comparison.
+# Final cell identity was taken to be the snRNA-based because the larger dataset is focused on snRNA where all samples have data availability.
 sum(atac_out_filt$CellType_final==atac_out_filt$CellType_ATAC)/length(atac_out_filt$CellType_final)
 
 # Save output where new images will be deposited and data will reside. 
@@ -347,9 +347,6 @@ saveArchRProject(ArchRProj = projCARE_filt_rna,
                  load = FALSE, 
                  dropCells = TRUE,
                  overwrite = TRUE) 
-
-
-
 
 
 ### END ###
