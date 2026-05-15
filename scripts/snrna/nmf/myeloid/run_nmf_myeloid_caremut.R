@@ -9,7 +9,7 @@ library(Matrix)
 ## Test parameters:
 # in_path <- "/vast/palmer/pi/verhaak/kcj28/care_mut/processed_data/nmf_2026/Myeloid/"
 # mat_index <- 1
-# out_path <- "/vast/palmer/pi/verhaak/kcj28/care_mut/results/nmf_res_2026/myeloid_n73/"
+# out_path <- "/vast/palmer/pi/verhaak/kcj28/care_mut/results/nmf_res_2026/myeloid_n73_no_parallel/"
 # rank_lb <- 3
 # rank_ub <- 10
 # nrun <- 10
@@ -49,9 +49,7 @@ print(paste0("Running NMF for sample ", mat_name, ", ", "LB=", rank_lb, ", UB=",
 
 # This runs the NMF algorithm. Due to an issue that we encountered on our HPC infrastructure we cannot use parallelization but
 # this might not be the case on your system so check it (you'll need to set the .pbackend parameter)
-# nmf_res <- nmf(x = nmf_mat, rank = rank_lb:rank_ub, method = "snmf/r", nrun = nrun , .opt = "v", .pbackend = NA)
-# Updated to permit parallelization
-nmf_res <- nmf(x = nmf_mat, rank = rank_lb:rank_ub, method = "snmf/r", nrun = nrun , .opt = "vp4", .pbackend = "par", seed = 42)
+nmf_res <- nmf(x = nmf_mat, rank = rank_lb:rank_ub, method = "snmf/r", nrun = nrun , .opt = "v", .pbackend = NA)
 
 print(paste0("NMF completed successfully"))
 

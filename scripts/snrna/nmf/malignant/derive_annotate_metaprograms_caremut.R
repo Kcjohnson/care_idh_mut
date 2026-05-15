@@ -1,7 +1,6 @@
 ##################################
 # Derive and annotate malignant MPs for CAREmut dataset
 # Author: Kevin Johnson
-# Date: 2026.04.01
 ##################################
 
 proj_dir    <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut"
@@ -29,7 +28,6 @@ source(file.path(script_dir, "utils", "plot_theme.R"))
 
 
 # Path to NMF results directory.
-# nmf_res_dir <- file.path(proj_dir, "results/nmf_res_caremut/malignant_n74/")
 nmf_res_dir <- file.path(proj_dir, "results/nmf_res_caremut/malignant_n74_downsampled/")
 
 # List files in the directory. Note that there was one sample with insufficient malignant cells. Therefore, n = 74 samples.

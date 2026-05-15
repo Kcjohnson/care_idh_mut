@@ -1,8 +1,9 @@
 ##################################
 # Perform GO term enrichment for each MP (50 genes) for CAREmut malignant states
 # Author: Kevin Johnson
-# Date: 2026.04.01
 ##################################
+
+# This analysis was not used in the final version of the paper, but provided further support for metaprogram annotation based on Gene Ontology term enrichment
 
 library(tidyverse)
 library(Seurat)
@@ -115,7 +116,7 @@ y_labels_to_display <- c("neuron recognition", "developmental process",
                          "response to stress")
 
 
-pdf(paste0(fig_dir, "edf4c_malignant_mp_gene_ontology_enrichment.pdf"), width = 6, height = 4.5)
+pdf(paste0(fig_dir, "malignant_mp_gene_ontology_enrichment.pdf"), width = 6, height = 4.5)
 ggplot(goRes_plot, aes(x = MP, y = Term, fill = -log10(raw.p.value))) +
   geom_tile() +
   scale_fill_viridis(limits=c(0, 15), option = "D", oob=squish, name="Significance\n-log10(p-value)") +

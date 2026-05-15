@@ -7,9 +7,9 @@ print("************************************ Starting ***************************
 library(Matrix)
 
 ## Test parameters:
-# in_path <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/processed_data/nmf_input/Undifferentiated/"
+# in_path <- "/vast/palmer/pi/verhaak/kcj28/care_mut/processed_data/nmf_2026/Malignant/"
 # mat_index <- 1
-# out_path <- "/vast/palmer/pi/verhaak/kcj28/care_idh_mut/results/nmf_res_caremut/undifferentiated/"
+# out_path <- "/vast/palmer/pi/verhaak/kcj28/care_mut/results/nmf_res_2026/malignant_n74_downsampled"
 # rank_lb <- 3
 # rank_ub <- 10
 # nrun <- 10
@@ -25,7 +25,6 @@ print(paste0("Loading packages"))
 
 library(NMF)
 library(BiocParallel)
-set.seed(1)
 
 files_list <- list.files(in_path)
 
@@ -41,8 +40,24 @@ mat_name <- gsub("\\.RDS", "", filename) ### name of current sample
 
 nmf_mat <- as.matrix(nmf_mat)     ### current sample we want to run 
 
-# Using all Undifferentiated malignant cells identified by the first iteration of cell state classification.
+# Using all malignant cells per sample and not limiting to  just a subset for faster processing times
 print(paste0("Loaded matrix with ", nrow(nmf_mat), " rows and ", ncol(nmf_mat), " columns"))
+
+# Set a maximum limit of cells to be submitted to NMF. Samples with many cells results in slow processing times. 
+max_cells <- 2624 #  The median number of malignant cells across samples in the dataset.
+num_columns <- ncol(nmf_mat)
+
+set.seed(123)
+if (num_columns > max_cells) {
+  # Generate a random sample of column indices
+  sampled_columns <- sample(1:num_columns, size = max_cells)
+  
+  # Subset the matrix with the sampled columns
+  downsampled_matrix <- nmf_mat[, sampled_columns]
+  
+  # Assign the downsampled matrix back to the original variable
+  nmf_mat <- downsampled_matrix
+}
 
 print(paste0("Proceeding with a matrix with ", nrow(nmf_mat), " rows and ", ncol(nmf_mat), " columns"))
 

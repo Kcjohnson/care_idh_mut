@@ -14,7 +14,7 @@ ARRAYID="`expr $1`"
 IN_PATH=/vast/palmer/pi/verhaak/kcj28/care_mut/processed_data/nmf_2026/Malignant/
 
 # Output directory (will be created if not existing).
-OUT_PATH=/vast/palmer/pi/verhaak/kcj28/care_mut/results/nmf_res_2026/malignant_n74/
+OUT_PATH=/vast/palmer/pi/verhaak/kcj28/care_mut/results/nmf_res_2026/malignant_n74_downsampled/
 mkdir -p $OUT_PATH
 
 # Set other variables for NMF
@@ -30,7 +30,7 @@ echo ""
 
 
 # Run Rscript.
-Rscript --verbose /vast/palmer/pi/verhaak/kcj28/care_mut/scripts/nmf_2026/malignant/run_nmf_malignant_all.R $IN_PATH $ARRAYID $OUT_PATH $RANK_LB $RANK_UB $NRUN
+Rscript --verbose /vast/palmer/pi/verhaak/kcj28/care_mut/scripts/nmf_2026/malignant_downsampled/run_nmf_malignant_all_downsampled.R $IN_PATH $ARRAYID $OUT_PATH $RANK_LB $RANK_UB $NRUN
 
 ENDTIME=`date`
 echo $ENDTIME

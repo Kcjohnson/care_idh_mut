@@ -120,7 +120,7 @@ all(seurat_md$CellID==row.names(seurat_obj_singlets[[]]))
 row.names(add_data) <- row.names(seurat_obj_singlets[[]])
 seurat_obj_singlets <- AddMetaData(seurat_obj_singlets, metadata = add_data)
 
-# Load in th final metadata that was used in the paper and in downstream analyses.
+# Load in the metadata that was used in the pre-revision analysis to assess.
 caremut_md <- read.table("/vast/palmer/pi/verhaak/kcj28/care_mut/processed_data/rna/care_mut_cleaned_snrna_metadata_n75_20240212.txt", sep = "\t", row.names = 1, header = TRUE)
 caremut_md_filtered <- caremut_md %>% 
   dplyr::select(CellID, seurat_final_clusters_og = seurat_final_clusters, CellType_initial_og = CellType_initial, CellType_infercnv_og = CellType_infercnv, CellType_final_og = CellType_final,
