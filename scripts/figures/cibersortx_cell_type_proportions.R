@@ -547,6 +547,8 @@ genetic_alt_vs_treatment_df <- all_mut_csx_fractions_malignant_adj_wide %>%
 # Statistically significant association between acquired genetic alt. and treatment. P = 0.006
 fisher.test(table(genetic_alt_vs_treatment_df$acquired_genetic_alt_S1S2, genetic_alt_vs_treatment_df$received_treatment))
 
+all_mut_csx_fractions_malignant_adj_wide$acquired_genetic_alt_S1S2 <- factor(all_mut_csx_fractions_malignant_adj_wide$acquired_genetic_alt_S1S2, levels = c("Did not acquire alt.", "Acquired genetic alt."))
+
 pdf(paste0(fig_dir, "fig3g_glass_longitudinal_differences_by_genetics.pdf"), width = 3, height = 3, useDingbats = FALSE)
 ggplot(all_mut_csx_fractions_malignant_adj_wide, aes(x=acquired_genetic_alt_S1S2, y=percentage_change*100)) +
   geom_boxplot(aes(fill=cell_type), outlier.shape = NA) +

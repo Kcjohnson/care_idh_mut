@@ -152,6 +152,11 @@ tcga_opc <- tcga_fractions_subtype_adj %>%
   filter(cell_type%in%c("OPC-like"))
 wilcox.test(tcga_opc$freq~tcga_opc$IDH.codel.subtype)$p.value # 6.603952e-18
 
+# Determine the total sample size
+tcga_grade_analysis <- tcga_fractions_subtype_adj %>%
+  filter(!is.na(revised_grade))
+n_distinct(tcga_grade_analysis$aliquot_barcode) # 370
+
 pdf(paste0(fig_dir, "tcga_tumor_types_molecular_grade_kruskal.pdf"), width = 4, height = 2.75, useDingbats = FALSE)
 ggplot(tcga_fractions_subtype_adj %>% 
          filter(!is.na(revised_grade)), aes(x = revised_grade, y = malignant_freq*100)) + 

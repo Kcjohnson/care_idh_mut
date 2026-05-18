@@ -39,7 +39,11 @@ miller_myeloid_program$CellID <- gsub("\\.", "-", rownames(miller_myeloid_progra
 
 # Read in clinical information
 patient_md <- read.delim("/vast/palmer/pi/verhaak/kcj28/care_mut/data/metadata/clinical_patient_genomic_md_20240608.txt", sep="\t", header = TRUE)
+# Update clinical information that was confirmed.
+patient_md$patient_id[is.na(patient_md$received_rt_t1t2)]
+patient_md$received_rt_t1t2[patient_md$patient_id=="P17"] <- "0"
 patient_md$received_rt_t1t2[patient_md$patient_id=="P107"] <- "0"
+
 sample_md <- read.delim("/vast/palmer/pi/verhaak/kcj28/care_mut/data/metadata/clinical_samples_genomic_md_20240608.txt", sep="\t", header = TRUE)
 sample_md_grade <- sample_md %>% 
   mutate(grade = paste0("G", grade_num)) %>% 
@@ -187,8 +191,11 @@ dev.off()
 ### ### ### ### ### ###
 patient_md_trim <- patient_md %>% 
   dplyr::select(patient_id, idh_codel_subtype, grade_change_t1t2, surgical_interval_mo_t1t2, received_alk_t1t2, received_rt_t1t2) 
-patient_md_trim$received_rt_t1t2[patient_md_trim$patient_id=="P17"] <- 0
-patient_md_trim$received_rt_t1t2[patient_md_trim$patient_id=="P107"] <- 0
+# Confirm that rt information was updated
+patient_md_trim$received_rt_t1t2[patient_md_trim$patient_id=="P17"]==0
+# patient_md_trim$received_rt_t1t2[patient_md_trim$patient_id=="P17"] <- 0
+patient_md_trim$received_rt_t1t2[patient_md_trim$patient_id=="P107"]==0
+#patient_md_trim$received_rt_t1t2[patient_md_trim$patient_id=="P107"] <- 0
 
 myeloid_care_md_summary_wide <- myeloid_summary_state %>% 
   dplyr::select(patient_id, timepoint, myeloid_state_collapsed, freq) %>% 
@@ -212,6 +219,7 @@ myeloid_care_md_summary_wide_mg <- myeloid_care_md_summary_wide %>%
 hist(myeloid_care_md_summary_wide_mg$dT)
 
 # MG-like shift at recurrence
+n_distinct(myeloid_care_md_summary_wide_mg$patient_id) # n = 32
 fit <- lm(dT ~ grade_change_t1t2 + received_rt_t1t2 + surgical_interval_mo_t1t2, data = myeloid_care_md_summary_wide_mg)
 summary(fit) # RT p-value = 0.004
 fit <- lm(dT ~ grade_change_t1t2 + received_rt_t1t2 + surgical_interval_mo_t1t2 + tumor_type, data = myeloid_care_md_summary_wide_mg)
@@ -225,7 +233,8 @@ myeloid_care_md_summary_wide_mac <- myeloid_care_md_summary_wide %>%
 # Delta Macrophage abundance is approximately normally distributed
 hist(myeloid_care_md_summary_wide_mac$dT)
 
-# Wilcoxon p-value = 0.006 for samples treated with RT versus those that were not.
+# Wilcoxon p-value = 0.006 (rounded up to 0.007) for samples treated with RT versus those that were not. n = 32.
+n_distinct(myeloid_care_md_summary_wide_mac$patient_id) # n = 32
 wilcox.test(myeloid_care_md_summary_wide_mac$dT~as.factor(myeloid_care_md_summary_wide_mac$received_rt_t1t2))
 
 # Macrophage-like shift at recurrence

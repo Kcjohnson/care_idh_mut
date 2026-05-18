@@ -86,7 +86,6 @@ pdf(paste0(fig_dir, "longitudinal_dag_by_genetics_wilcoxon.pdf"), width = 2, hei
 ggplot(malignant_res_compare %>% 
          mutate(cell_state = recode(cell_state, `Undifferentiated` = "Undiff.")), aes(x=acquired_genetic_alt_t1t2, y=total_dag)) +
   geom_boxplot(outlier.shape = NA) +
-  geom_point(aes(color=cell_state), size = 0.5) +
   geom_point(aes(color=cell_state), position = position_jitter(width = 0.1, seed = 42), size = 0.5) +
   stat_compare_means(method = "wilcox", paired = FALSE, size =2.25, label="p.format") +
   plot_theme + 
